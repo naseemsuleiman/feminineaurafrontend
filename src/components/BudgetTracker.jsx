@@ -1,35 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  PiggyBank, Wallet, ArrowRight, Lock, Heart, ShoppingBag,
+  Download, Sparkles, Check, TrendingUp,
+} from 'lucide-react';
 import API from '../api';
 
 const fmt = (n) =>
-  `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `$${Number(n || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export default function BudgetTracker({ month }) {
   const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Setup form state
-  const [setup, setSetup] = useState({
-    monthly_income: 10000,
-    essentials_pct: 50,
-    wants_pct: 30,
-    savings_pct: 20,
-  });
-
-  const pctTotal = Number(setup.essentials_pct) + Number(setup.wants_pct) + Number(setup.savings_pct);
+  // Savings screen state
+  const [savingsGoal, setSavingsGoal] = useState('');
+  const [income, setIncome] = useState('');
 
   const loadBudget = async () => {
     setLoading(true);
     try {
       const { data } = await API.get(`/budgets/current/?month=${month}`);
       setBudget(data);
-      setSetup({
-        monthly_income: parseFloat(data.monthly_income),
-        essentials_pct: parseFloat(data.essentials_pct),
-        wants_pct: parseFloat(data.wants_pct),
-        savings_pct: parseFloat(data.savings_pct),
-      });
     } catch {
       setBudget(null);
     } finally {
@@ -37,13 +32,19 @@ export default function BudgetTracker({ month }) {
     }
   };
 
-  useEffect(() => { loadBudget(); /* eslint-disable-next-line */ }, [month]);
+  useEffect(() => {
+    loadBudget();
+    // eslint-disable-next-line
+  }, [month]);
 
-  const createBudget = async () => {
-    if (pctTotal !== 100) return alert('Percentages must total 100%.');
+  const startTracking = async () => {
     setSaving(true);
     try {
-      await API.post('/budgets/', { month, ...setup });
+      await API.post('/budgets/', {
+        month,
+        monthly_income: income || 0,
+        savings_goal: savingsGoal,
+      });
       await loadBudget();
     } catch (e) {
       alert(JSON.stringify(e.response?.data || e.message));
@@ -52,34 +53,20 @@ export default function BudgetTracker({ month }) {
     }
   };
 
-  const updateSetup = async () => {
-    if (pctTotal !== 100) return alert('Percentages must total 100%.');
-    setSaving(true);
-    try {
-      const { data } = await API.put(`/budgets/${budget.id}/`, { month, ...setup });
-      setBudget(data);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const updateEntry = async (entryId, patch) => {
-    // optimistic
     setBudget((b) => ({
       ...b,
       entries: b.entries.map((e) => (e.id === entryId ? { ...e, ...patch } : e)),
     }));
     const entry = budget.entries.find((e) => e.id === entryId);
-    const payload = {
+    await API.patch(`/entries/${entryId}/`, {
       day: entry.day,
       date: entry.date,
       essentials: entry.essentials,
       wants: entry.wants,
-      savings: entry.savings,
       notes: entry.notes,
       ...patch,
-    };
-    await API.patch(`/entries/${entryId}/`, payload);
+    });
   };
 
   const totals = useMemo(() => {
@@ -87,24 +74,26 @@ export default function BudgetTracker({ month }) {
     const sum = (k) => budget.entries.reduce((a, e) => a + parseFloat(e[k] || 0), 0);
     const essentials = sum('essentials');
     const wants = sum('wants');
-    const savings = sum('savings');
-    const income = parseFloat(budget.monthly_income);
+    const spent = essentials + wants;
+    const income = parseFloat(budget.monthly_income || 0);
+    const savingsGoal = parseFloat(budget.savings_goal || 0);
+    const budgetAfterSavings = income > 0 ? income - savingsGoal : null;
     return {
-      essentials, wants, savings,
-      spent: essentials + wants + savings,
-      remaining: income - (essentials + wants + savings),
+      essentials,
+      wants,
+      spent,
       income,
-      essentialsLimit: parseFloat(budget.essentials_limit),
-      wantsLimit: parseFloat(budget.wants_limit),
-      savingsLimit: parseFloat(budget.savings_limit),
+      savingsGoal,
+      budgetAfterSavings,
+      remaining: budgetAfterSavings !== null ? budgetAfterSavings - spent : null,
     };
   }, [budget]);
 
   const exportCSV = () => {
     if (!budget) return;
-    const header = ['Day', 'Date', 'Essentials', 'Wants', 'Savings', 'Daily Total', 'Notes'];
+    const header = ['Day', 'Date', 'Essentials', 'Wants', 'Daily Total', 'Notes'];
     const rows = budget.entries.map((e) => [
-      e.day, e.date || '', e.essentials, e.wants, e.savings, e.daily_total, `"${e.notes || ''}"`,
+      e.day, e.date || '', e.essentials, e.wants, e.daily_total, `"${e.notes || ''}"`,
     ]);
     const csv = [header, ...rows].map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -116,141 +105,255 @@ export default function BudgetTracker({ month }) {
     URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="text-center py-20 text-mulberry/60">Loading tracker…</div>;
-
-  // Setup card (no budget yet)
-  if (!budget) {
+  if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
-        <div className="card">
-          <h3 className="font-serif text-2xl mb-2">Set Up Your {month} Budget</h3>
-          <p className="text-sm text-mulberry/60 mb-6">
-            Classic rule: 50% Essentials · 30% Wants · 20% Savings / Debt.
-          </p>
+      <div className="text-center py-24 text-mulberry/60">
+        <Sparkles className="animate-pulse mx-auto mb-3 text-rose-400" size={28} />
+        Loading your tracker…
+      </div>
+    );
+  }
 
-          <label className="block mb-4">
-            <span className="text-sm font-medium">Take-home Monthly Income</span>
-            <input
-              type="number"
-              className="input mt-1"
-              value={setup.monthly_income}
-              onChange={(e) => setSetup({ ...setup, monthly_income: e.target.value })}
-            />
-          </label>
+  /* ─────────────────────────────────────────────
+     SAVINGS SCREEN (no budget yet)
+  ───────────────────────────────────────────── */
+  if (!budget) {
+    const savingsNum = parseFloat(savingsGoal) || 0;
+    const incomeNum = parseFloat(income) || 0;
+    const pct = incomeNum > 0 ? (savingsNum / incomeNum) * 100 : 0;
+    const valid =
+      savingsNum > 0 && (incomeNum === 0 || savingsNum < incomeNum);
 
-          <div className="grid grid-cols-3 gap-3">
-            {['essentials_pct', 'wants_pct', 'savings_pct'].map((k) => (
-              <label key={k}>
-                <span className="text-xs uppercase tracking-wider text-mulberry/60">
-                  {k.split('_')[0]}
-                </span>
-                <input
-                  type="number"
-                  className="input mt-1"
-                  value={setup[k]}
-                  onChange={(e) => setSetup({ ...setup, [k]: e.target.value })}
-                />
-              </label>
-            ))}
+    return (
+      <div className="max-w-xl mx-auto">
+        <div className="relative rounded-[2rem] bg-gradient-to-br from-white via-blush-50 to-blush-100 p-8 md:p-10 shadow-card border border-blush-100 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-rose-400/15 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full bg-blush-200/40 blur-3xl" />
+
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 grid place-items-center shadow-soft">
+                <PiggyBank size={24} className="text-white" />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl text-mulberry">Set Your Savings First</h3>
+                <p className="text-xs uppercase tracking-[0.25em] text-rose-600 mt-1">
+                  {month}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-mulberry/70 leading-relaxed mb-8">
+              Before you start tracking, commit to the amount you want to save
+              this month. This stays locked as your intention — then you can
+              begin the daily tracker.
+            </p>
+
+            <label className="block mb-5">
+              <span className="text-sm font-medium text-mulberry flex items-center gap-2">
+                <PiggyBank size={14} className="text-rose-600" />
+                Amount I want to save this month
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                autoFocus
+                className="input mt-2 !py-3 text-lg font-serif"
+                placeholder="2,000.00"
+                value={savingsGoal}
+                onChange={(e) => setSavingsGoal(e.target.value)}
+              />
+            </label>
+
+            <label className="block mb-5">
+              <span className="text-sm font-medium text-mulberry flex items-center gap-2">
+                <Wallet size={14} className="text-rose-600" />
+                Monthly income
+                <span className="text-xs text-mulberry/50 font-normal">(optional)</span>
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                className="input mt-2"
+                placeholder="10,000.00"
+                value={income}
+                onChange={(e) => setIncome(e.target.value)}
+              />
+            </label>
+
+            {/* Live feedback */}
+            {savingsNum > 0 && (
+              <div
+                className={`rounded-2xl p-4 text-sm mb-6 flex items-start gap-3 ${
+                  incomeNum && savingsNum >= incomeNum
+                    ? 'bg-red-50 text-red-600'
+                    : 'bg-blush-50 text-mulberry/75'
+                }`}
+              >
+                {incomeNum && savingsNum >= incomeNum ? (
+                  <span>⚠ Savings goal must be less than your income.</span>
+                ) : (
+                  <>
+                    <Check size={16} className="text-rose-600 mt-0.5 shrink-0" />
+                    <span>
+                      You're committing <strong className="text-rose-600">{fmt(savingsNum)}</strong>
+                      {incomeNum > 0 && (
+                        <> — <strong>{pct.toFixed(1)}%</strong> of your income</>
+                      )}
+                      .
+                      {incomeNum > 0 && (
+                        <> Leaving <strong>{fmt(incomeNum - savingsNum)}</strong> for daily spending.</>
+                      )}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={startTracking}
+              disabled={!valid || saving}
+              className="btn-primary w-full !py-4 text-base disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Starting…' : 'Proceed to Daily Tracker'}
+              <ArrowRight size={18} className="ml-2" />
+            </button>
+
+            <p className="text-xs text-center text-mulberry/50 mt-4">
+              You can't change this amount later — so make it intentional.
+            </p>
           </div>
-
-          <div className={`mt-4 text-sm ${pctTotal === 100 ? 'text-green-600' : 'text-red-500'}`}>
-            {pctTotal === 100 ? '✓ Categories total 100%' : `✗ Currently ${pctTotal}% — must be 100%`}
-          </div>
-
-          <button
-            onClick={createBudget}
-            disabled={saving || pctTotal !== 100}
-            className="btn-primary mt-6 w-full disabled:opacity-50"
-          >
-            {saving ? 'Creating…' : 'Start 30-Day Tracker'}
-          </button>
         </div>
       </div>
     );
   }
 
-  // Full tracker
+  /* ─────────────────────────────────────────────
+     DAILY TRACKER
+  ───────────────────────────────────────────── */
   return (
     <div className="space-y-8">
-      {/* Summary card */}
+      {/* Savings Commitment Banner */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-rose-600 via-rose-400 to-blush-200 p-8 md:p-10 shadow-card text-white">
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/20 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 text-white/85 text-xs uppercase tracking-[0.25em] mb-3">
+              <PiggyBank size={14} /> Savings Commitment
+            </div>
+            <p className="font-serif text-4xl md:text-5xl">{fmt(totals.savingsGoal)}</p>
+            <p className="text-white/85 text-sm mt-2 flex items-center gap-2">
+              <Lock size={12} />
+              Locked in for {month}
+              {budget.savings_pct != null && <> · {budget.savings_pct}% of income</>}
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-sm">
+            <Sparkles size={14} /> Your intention
+          </div>
+        </div>
+      </div>
+
+      {/* Overview numbers */}
       <div className="card">
-        <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
           <div>
             <h3 className="font-serif text-2xl">{month} Overview</h3>
-            <p className="text-sm text-mulberry/60">Income {fmt(totals.income)}</p>
+            <p className="text-sm text-mulberry/60">
+              {totals.income > 0 ? `Income ${fmt(totals.income)}` : 'No income set'}
+            </p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={exportCSV} className="btn-ghost !py-2 !px-4 text-sm">Export CSV</button>
-            <button onClick={updateSetup} disabled={saving} className="btn-primary !py-2 !px-4 text-sm">
-              {saving ? 'Saving…' : 'Save Setup'}
-            </button>
-          </div>
+          <button onClick={exportCSV} className="btn-ghost !py-2 !px-4 text-sm">
+            <Download size={16} className="mr-2" /> Export CSV
+          </button>
         </div>
 
-        {/* Setup inputs */}
-        <div className="grid md:grid-cols-4 gap-3 mb-6">
-          <label>
-            <span className="text-xs uppercase tracking-wider text-mulberry/60">Income</span>
-            <input type="number" className="input mt-1" value={setup.monthly_income}
-              onChange={(e) => setSetup({ ...setup, monthly_income: e.target.value })} />
-          </label>
-          {['essentials_pct', 'wants_pct', 'savings_pct'].map((k) => (
-            <label key={k}>
-              <span className="text-xs uppercase tracking-wider text-mulberry/60">{k.split('_')[0]} %</span>
-              <input type="number" className="input mt-1" value={setup[k]}
-                onChange={(e) => setSetup({ ...setup, [k]: e.target.value })} />
-            </label>
-          ))}
-        </div>
-
-        <div className={`text-sm mb-6 ${pctTotal === 100 ? 'text-green-600' : 'text-red-500'}`}>
-          {pctTotal === 100 ? '✓ Categories total 100%' : `✗ Currently ${pctTotal}% — must be 100%`}
-        </div>
-
-        {/* Progress */}
+        {/* Category cards */}
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { label: 'Essentials', spent: totals.essentials, limit: totals.essentialsLimit, color: 'bg-rose-600' },
-            { label: 'Wants', spent: totals.wants, limit: totals.wantsLimit, color: 'bg-rose-400' },
-            { label: 'Savings / Debt', spent: totals.savings, limit: totals.savingsLimit, color: 'bg-blush-200' },
+            {
+              label: 'Savings', icon: PiggyBank,
+              spent: totals.savingsGoal, limit: totals.savingsGoal,
+              color: 'bg-rose-600', locked: true,
+              sub: 'Committed',
+            },
+            {
+              label: 'Essentials', icon: Heart,
+              spent: totals.essentials,
+              limit: totals.budgetAfterSavings,
+              color: 'bg-rose-400',
+              sub: 'Daily spend',
+            },
+            {
+              label: 'Wants', icon: ShoppingBag,
+              spent: totals.wants,
+              limit: totals.budgetAfterSavings,
+              color: 'bg-blush-200',
+              sub: 'Daily spend',
+            },
           ].map((c) => {
             const pct = c.limit ? Math.min(100, (c.spent / c.limit) * 100) : 0;
+            const Icon = c.icon;
             return (
-              <div key={c.label} className="rounded-2xl bg-blush-50 p-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">{c.label}</span>
-                  <span className="text-mulberry/60">{fmt(c.spent)} / {fmt(c.limit)}</span>
+              <div key={c.label} className="rounded-2xl bg-blush-50 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Icon size={16} className="text-rose-600" />
+                    <span className="font-medium text-sm">{c.label}</span>
+                    {c.locked && <Lock size={12} className="text-mulberry/40" />}
+                  </div>
+                  <span className="text-[10px] uppercase tracking-widest text-mulberry/40">
+                    {c.sub}
+                  </span>
                 </div>
+                <p className="font-serif text-xl mb-3">
+                  {fmt(c.spent)}
+                  {c.limit != null && (
+                    <span className="text-sm text-mulberry/50 font-sans"> / {fmt(c.limit)}</span>
+                  )}
+                </p>
                 <div className="h-2 rounded-full bg-blush-100 overflow-hidden">
-                  <div className={`h-full ${c.color}`} style={{ width: `${pct}%` }} />
+                  <div className={`h-full ${c.color} transition-all`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-mulberry/50">Spent</p>
-            <p className="font-serif text-2xl">{fmt(totals.spent)}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-widest text-mulberry/50">Remaining</p>
-            <p className={`font-serif text-2xl ${totals.remaining < 0 ? 'text-red-500' : 'text-rose-600'}`}>
-              {fmt(totals.remaining)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-widest text-mulberry/50">Income</p>
-            <p className="font-serif text-2xl">{fmt(totals.income)}</p>
-          </div>
+        {/* Big numbers */}
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          {[
+            { label: 'Saved', value: fmt(totals.savingsGoal), cls: 'text-rose-600', icon: PiggyBank },
+            { label: 'Spent', value: fmt(totals.spent), cls: '', icon: TrendingUp },
+            {
+              label: 'Left to Spend',
+              value: totals.remaining !== null ? fmt(totals.remaining) : '—',
+              cls: totals.remaining !== null && totals.remaining < 0 ? 'text-red-500' : 'text-rose-600',
+              icon: Wallet,
+            },
+            { label: 'Income', value: totals.income > 0 ? fmt(totals.income) : '—', cls: '', icon: Wallet },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label}>
+                <Icon size={16} className="mx-auto mb-2 text-mulberry/40" />
+                <p className="text-xs uppercase tracking-widest text-mulberry/50">{s.label}</p>
+                <p className={`font-serif text-2xl ${s.cls}`}>{s.value}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Daily table */}
       <div className="card overflow-hidden">
-        <h3 className="font-serif text-2xl mb-4">30-Day Daily Tracker</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="font-serif text-2xl">30-Day Daily Tracker</h3>
+          <span className="text-xs text-mulberry/50 uppercase tracking-widest">
+            Essentials · Wants only
+          </span>
+        </div>
         <div className="overflow-x-auto -mx-6">
           <table className="min-w-full text-sm">
             <thead>
@@ -259,8 +362,7 @@ export default function BudgetTracker({ month }) {
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Essentials</th>
                 <th className="px-4 py-3">Wants</th>
-                <th className="px-4 py-3">Savings</th>
-                <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Daily Total</th>
                 <th className="px-4 py-3">Notes</th>
               </tr>
             </thead>
@@ -269,23 +371,33 @@ export default function BudgetTracker({ month }) {
                 <tr key={e.id} className="border-t border-blush-100 hover:bg-blush-50/50">
                   <td className="px-4 py-2 font-medium">{e.day}</td>
                   <td className="px-4 py-2">
-                    <input type="date" className="input !py-1 !px-2"
+                    <input
+                      type="date"
+                      className="input !py-1 !px-2"
                       value={e.date || ''}
-                      onChange={(ev) => updateEntry(e.id, { date: ev.target.value || null })} />
+                      onChange={(ev) => updateEntry(e.id, { date: ev.target.value || null })}
+                    />
                   </td>
-                  {['essentials', 'wants', 'savings'].map((k) => (
+                  {['essentials', 'wants'].map((k) => (
                     <td key={k} className="px-4 py-2">
-                      <input type="number" step="0.01" className="input !py-1 !px-2 w-24"
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input !py-1 !px-2 w-24"
                         value={e[k]}
-                        onChange={(ev) => updateEntry(e.id, { [k]: ev.target.value })} />
+                        onChange={(ev) => updateEntry(e.id, { [k]: ev.target.value })}
+                      />
                     </td>
                   ))}
                   <td className="px-4 py-2 font-medium text-rose-600">{fmt(e.daily_total)}</td>
                   <td className="px-4 py-2">
-                    <input type="text" className="input !py-1 !px-2"
+                    <input
+                      type="text"
+                      className="input !py-1 !px-2"
                       placeholder="Note…"
                       value={e.notes}
-                      onChange={(ev) => updateEntry(e.id, { notes: ev.target.value })} />
+                      onChange={(ev) => updateEntry(e.id, { notes: ev.target.value })}
+                    />
                   </td>
                 </tr>
               ))}
