@@ -27,3 +27,36 @@ body {
 .section-title {
   @apply font-serif text-3xl md:text-4xl text-mulberry;
 }
+/* Auth-specific */
+.auth-blob {
+  @apply absolute rounded-full blur-3xl pointer-events-none;
+}
+
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+  pointer-events: none;
+}
+
+.auth-input-wrap {
+  @apply relative;
+}
+.auth-input-icon {
+  @apply absolute left-4 top-1/2 -translate-y-1/2 text-rose-400 pointer-events-none transition;
+}
+.auth-input-wrap:focus-within .auth-input-icon {
+  @apply text-rose-600;
+}
