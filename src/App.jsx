@@ -54,7 +54,7 @@ function SiteGate() {
       <main className="flex-1">
         <Routes>
           {/* <Route path="/" element={<Home />} /> */}
-          <Route path="/" element={<ComingSoonPage />} />
+          <Route path="/" element={<Home />} />
           <Route path="/empowerment" element={<ArticlesPage />} />
           <Route path="/budget-tracker" element={<BudgetPage />} />
           <Route path="/wisdom" element={<Wisdom />} />
