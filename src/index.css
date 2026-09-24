@@ -60,3 +60,11 @@ body {
 .auth-input-wrap:focus-within .auth-input-icon {
   @apply text-rose-600;
 }
+/* Hide scrollbar but keep scroll functionality for horizontal tab strips */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
