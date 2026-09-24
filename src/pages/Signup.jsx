@@ -19,19 +19,31 @@ export default function Signup() {
   const strength = getStrength(form.password);
 
   const submit = async (e) => {
-    e.preventDefault();
-    setErr('');
-    if (!agree) return setErr('Please accept the terms to continue.');
-    setLoading(true);
-    try {
-      await register(form.username, form.email, form.password);
-      nav('/budget-tracker');
-    } catch (e) {
-      setErr(prettyErr(e));
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setErr('');
+  if (!agree) return setErr('Please accept the terms to continue.');
+  setLoading(true);
+  try {
+    const result = await register(form.username, form.email, form.password);
+
+    if (result.success) {
+      const meRes = await API.get('/auth/me/');
+      const loggedUser = meRes.data;
+
+      if (loggedUser?.is_staff) {
+        nav('/admin-dashboard', { replace: true });
+      } else {
+        nav('/budget-tracker', { replace: true });
+      }
+    } else {
+      setErr(result.error || 'Registration failed.');
     }
-  };
+  } catch (e) {
+    setErr(prettyErr(e));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AuthLayout

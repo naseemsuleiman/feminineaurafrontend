@@ -14,18 +14,32 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
-    e.preventDefault();
-    setErr('');
-    setLoading(true);
-    try {
-      await login(form.username, form.password);
-      nav('/budget-tracker');
-    } catch {
-      setErr('Invalid username or password.');
-    } finally {
-      setLoading(false);
+  e.preventDefault();
+  setErr('');
+  setLoading(true);
+  try {
+    const result = await login(form.username, form.password);
+
+    if (result.success) {
+      // Read the user from the login response flow
+      // The AuthContext already set `user` — we just need to peek at it.
+      const meRes = await API.get('/auth/me/');
+      const loggedUser = meRes.data;
+
+      if (loggedUser?.is_staff) {
+        nav('/admin-dashboard', { replace: true });
+      } else {
+        nav('/budget-tracker', { replace: true });
+      }
+    } else {
+      setErr(result.error || 'Login failed.');
     }
-  };
+  } catch {
+    setErr('Invalid username or password.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AuthLayout
