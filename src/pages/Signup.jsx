@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   User, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Check, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import API from '../api';
 import AuthLayout from '../components/AuthLayout';
 
 export default function Signup() {
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
@@ -15,35 +16,46 @@ export default function Signup() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Password strength
   const strength = getStrength(form.password);
 
+  // If already logged in, redirect by role
+  useEffect(() => {
+    if (user) {
+      nav(user.is_staff ? '/admin-dashboard' : '/budget-tracker', { replace: true });
+    }
+  }, [user, nav]);
+
   const submit = async (e) => {
-  e.preventDefault();
-  setErr('');
-  if (!agree) return setErr('Please accept the terms to continue.');
-  setLoading(true);
-  try {
-    const result = await register(form.username, form.email, form.password);
+    e.preventDefault();
+    setErr('');
+    if (!agree) return setErr('Please accept the terms to continue.');
+    setLoading(true);
 
-    if (result.success) {
-      const meRes = await API.get('/auth/me/');
-      const loggedUser = meRes.data;
+    try {
+      // register() in AuthContext auto-logs the user in and returns { success }
+      const result = await register(form.username, form.email, form.password);
 
-      if (loggedUser?.is_staff) {
+      if (!result.success) {
+        setErr(result.error || 'Registration failed.');
+        setLoading(false);
+        return;
+      }
+
+      // Now the token is stored. Fetch fresh user to determine role.
+      const { data: me } = await API.get('/auth/me/');
+      console.log('[Signup] user after register:', me);
+
+      if (me?.is_staff) {
         nav('/admin-dashboard', { replace: true });
       } else {
         nav('/budget-tracker', { replace: true });
       }
-    } else {
-      setErr(result.error || 'Registration failed.');
+    } catch (e) {
+      console.error('[Signup] error:', e);
+      setErr(prettyErr(e));
+      setLoading(false);
     }
-  } catch (e) {
-    setErr(prettyErr(e));
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <AuthLayout
@@ -119,7 +131,6 @@ export default function Signup() {
             </button>
           </div>
 
-          {/* Strength meter */}
           {form.password && (
             <div className="mt-3 animate-fade-in">
               <div className="flex gap-1.5">
@@ -219,7 +230,6 @@ function prettyErr(e) {
   const data = e?.response?.data;
   if (!data) return 'Something went wrong. Please try again.';
   if (typeof data === 'string') return data;
-  // Flatten DRF field errors
   const first = Object.entries(data)[0];
   if (!first) return 'Something went wrong.';
   const [field, msgs] = first;
