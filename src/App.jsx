@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
+import AdminNavbar from './components/AdminNavbar';
 import Footer from './components/Footer';
 import useSiteStatus from './hooks/useSiteStatus';
 
@@ -26,9 +27,10 @@ function SiteGate() {
     );
   }
 
-  const isAdmin = user?.is_staff;
+  const isAdmin = !!user?.is_staff;
   const showRealSite = isLive || isAdmin;
 
+  // ── Not live + not admin → Coming Soon only
   if (!showRealSite) {
     return (
       <Routes>
@@ -40,6 +42,50 @@ function SiteGate() {
     );
   }
 
+  // ── Admin dashboard gets its own layout (no public Navbar/Footer)
+  if (isAdmin) {
+    return (
+      <Routes>
+        {/* Admin shell */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <div className="min-h-screen flex flex-col bg-blush-50">
+              <AdminNavbar />
+              <main className="flex-1">
+                <AdminDashboard />
+              </main>
+            </div>
+          }
+        />
+
+        {/* Admin can still browse the public site with the regular navbar */}
+        <Route
+          path="*"
+          element={
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/empowerment" element={<ArticlesPage />} />
+                  <Route path="/budget-tracker" element={<BudgetPage />} />
+                  <Route path="/wisdom" element={<Wisdom />} />
+                  <Route path="/community" element={<Community />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          }
+        />
+      </Routes>
+    );
+  }
+
+  // ── Regular visitor, site is live
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -52,7 +98,6 @@ function SiteGate() {
           <Route path="/community" element={<Community />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
