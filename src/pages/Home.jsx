@@ -44,7 +44,7 @@ function FeaturedSection() {
     {
       tag: 'Financial',
       title: 'The 30-Day Budget Tracker',
-      desc: 'Track essentials, wants & savings — daily. Financial freedom is self-care.',
+      desc: 'Track essentials, wants & savings, daily. Financial freedom is self-care.',
       to: '/budget-tracker',
       cta: 'Start tracking',
     },

@@ -38,7 +38,7 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 text-lg text-mulberry/70 max-w-lg mx-auto md:mx-0 leading-relaxed">
-            Your daily dose of feminine wisdom — self-love, grace, confidence & healing.
+            Your daily dose of feminine wisdom, self-love, grace, confidence & healing.
             A soft sanctuary for the woman you're becoming.
           </p>
 

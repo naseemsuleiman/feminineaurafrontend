@@ -8,7 +8,7 @@ export default function Footer() {
             <span className="font-serif text-lg">Feminine Aura</span>
           </div>
           <p className="text-sm text-mulberry/70">
-            Your daily dose of feminine wisdom — Self-love • Grace • Confidence • Healing.
+            Your daily dose of feminine wisdom, Self-love • Grace • Confidence • Healing.
           </p>
         </div>
         <div>
