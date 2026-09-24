@@ -4,7 +4,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import useSiteStatus from './hooks/useSiteStatus';
 
-// Pages
 import Home from './pages/Home';
 import ComingSoonPage from './pages/ComingSoonPage';
 import BudgetPage from './pages/BudgetPage';
@@ -19,7 +18,6 @@ function SiteGate() {
   const { isLive, loading } = useSiteStatus();
   const { user, loading: authLoading } = useAuth();
 
-  // While checking, show a soft loading state
   if (loading || authLoading) {
     return (
       <div className="min-h-screen grid place-items-center bg-blush-50 text-mulberry/40">
@@ -31,9 +29,6 @@ function SiteGate() {
   const isAdmin = user?.is_staff;
   const showRealSite = isLive || isAdmin;
 
-  /* ─────────────────────────────────────────────
-     COMING SOON — no navbar, no footer
-  ───────────────────────────────────────────── */
   if (!showRealSite) {
     return (
       <Routes>
@@ -45,15 +40,11 @@ function SiteGate() {
     );
   }
 
-  /* ─────────────────────────────────────────────
-     REAL SITE — with navbar + footer
-  ───────────────────────────────────────────── */
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
         <Routes>
-          {/* <Route path="/" element={<Home />} /> */}
           <Route path="/" element={<Home />} />
           <Route path="/empowerment" element={<ArticlesPage />} />
           <Route path="/budget-tracker" element={<BudgetPage />} />

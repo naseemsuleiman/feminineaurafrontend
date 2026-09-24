@@ -7,23 +7,22 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load authenticated user profile
   const loadUser = useCallback(async () => {
     const token = localStorage.getItem('access');
     if (!token) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
-
     try {
       const { data } = await API.get('/auth/me/');
       setUser(data);
-    } catch (error) {
-      // If fetching profile fails (e.g., invalid/expired token), clear local session
+      return data;
+    } catch (err) {
       localStorage.removeItem('access');
       localStorage.removeItem('refresh');
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -33,32 +32,24 @@ export function AuthProvider({ children }) {
     loadUser();
   }, [loadUser]);
 
-  // Login handler
   const login = async (username, password) => {
     try {
       const { data } = await API.post('/auth/login/', { username, password });
-      
-      // Save JWT tokens
       localStorage.setItem('access', data.access);
       localStorage.setItem('refresh', data.refresh);
-
-      // Fetch user profile with new access token
       await loadUser();
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data || 'Login failed. Please check your credentials.',
+        error: error.response?.data?.detail || 'Login failed. Check your credentials.',
       };
     }
   };
 
-  // Registration handler
   const register = async (username, email, password) => {
     try {
       await API.post('/auth/register/', { username, email, password });
-      
-      // Automatically log user in after successful registration
       return await login(username, password);
     } catch (error) {
       return {
@@ -68,7 +59,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Logout handler
   const logout = () => {
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');

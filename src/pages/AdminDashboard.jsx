@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Mail, Download, RefreshCw, Sparkles,
-  ArrowLeft, Check, ShieldAlert,
+  ArrowLeft, Check, ShieldAlert, Search, TrendingUp,
 } from 'lucide-react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -15,8 +15,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [siteLive, setSiteLive] = useState(null);
+  const [query, setQuery] = useState('');
 
-  const fetchAll = async () => {
+  // ─── Fetch data ───────────────────────────────
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -35,14 +37,24 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
-
-  // Guard: only staff users
+  // ─── Fetch only when we know the user is staff ─
   useEffect(() => {
-    if (!authLoading && (!user || !user.is_staff)) {
-      nav('/');
+    if (!authLoading && user?.is_staff) {
+      fetchAll();
+    }
+  }, [authLoading, user, fetchAll]);
+
+  // ─── Redirect non-staff users ────────────────
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      nav('/login', { replace: true });
+      return;
+    }
+    if (!user.is_staff) {
+      nav('/', { replace: true });
     }
   }, [authLoading, user, nav]);
 
@@ -61,7 +73,12 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  if (authLoading || !user?.is_staff) {
+  const filtered = data.subscribers.filter((s) =>
+    s.email.toLowerCase().includes(query.toLowerCase())
+  );
+
+  // ─── Loading / guard screens ─────────────────
+  if (authLoading) {
     return (
       <div className="min-h-screen grid place-items-center bg-blush-50 text-mulberry/60">
         <Sparkles className="animate-pulse text-rose-400" size={28} />
@@ -69,9 +86,21 @@ export default function AdminDashboard() {
     );
   }
 
+  if (!user?.is_staff) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-blush-50 text-mulberry/60">
+        <div className="text-center">
+          <ShieldAlert size={28} className="mx-auto text-rose-400 mb-3" />
+          <p className="font-serif text-lg">Admin access required</p>
+          <p className="text-sm text-mulberry/50 mt-1">Redirecting…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main render ─────────────────────────────
   return (
     <section className="max-w-7xl mx-auto px-6 py-16">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-10">
         <div>
           <button
@@ -95,7 +124,6 @@ export default function AdminDashboard() {
 
       {/* Stats cards */}
       <div className="grid md:grid-cols-3 gap-5 mb-10">
-        {/* Subscribers */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-rose-400 to-blush-200 p-7 text-white shadow-card">
           <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/20 blur-3xl" />
           <div className="relative">
@@ -103,16 +131,13 @@ export default function AdminDashboard() {
               <Users size={14} /> Subscribers
             </div>
             <p className="font-serif text-5xl">{data.count}</p>
-            <p className="text-white/80 text-sm mt-2">
-              Women waiting for launch
-            </p>
+            <p className="text-white/80 text-sm mt-2">Women waiting for launch</p>
           </div>
         </div>
 
-        {/* Site status */}
         <div className="card">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-mulberry/50 mb-4">
-            <Sparkles size={14} className="text-rose-600" /> Site Status
+            <TrendingUp size={14} className="text-rose-600" /> Site Status
           </div>
           {siteLive === null ? (
             <p className="text-mulberry/40 text-sm">Loading…</p>
@@ -133,7 +158,6 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Export */}
         <div className="card flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-mulberry/50 mb-4">
@@ -154,7 +178,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="flex items-start gap-3 px-5 py-4 rounded-2xl bg-red-50 text-red-600 text-sm mb-6">
           <ShieldAlert size={18} className="shrink-0 mt-0.5" />
@@ -164,11 +187,26 @@ export default function AdminDashboard() {
 
       {/* Subscribers table */}
       <div className="card overflow-hidden">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-serif text-2xl">Subscribers</h2>
-          <span className="text-xs uppercase tracking-widest text-mulberry/40">
-            {data.count} total
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="font-serif text-2xl">Subscribers</h2>
+            <span className="text-xs uppercase tracking-widest text-mulberry/40">
+              {filtered.length} of {data.count}
+            </span>
+          </div>
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search email…"
+              className="input !py-2 !pl-10 !pr-4 text-sm w-64"
+            />
+          </div>
         </div>
 
         {loading ? (
@@ -176,12 +214,16 @@ export default function AdminDashboard() {
             <Sparkles className="animate-pulse mx-auto mb-3 text-rose-400" size={24} />
             Loading subscribers…
           </div>
-        ) : data.subscribers.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <Mail size={28} className="mx-auto text-rose-400 mb-3" />
-            <p className="font-serif text-lg text-mulberry">No subscribers yet.</p>
+            <p className="font-serif text-lg text-mulberry">
+              {data.count === 0 ? 'No subscribers yet.' : 'No matches.'}
+            </p>
             <p className="text-sm text-mulberry/50 mt-1">
-              They'll appear here as soon as someone signs up.
+              {data.count === 0
+                ? "They'll appear here as soon as someone signs up."
+                : 'Try a different search.'}
             </p>
           </div>
         ) : (
@@ -196,7 +238,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {data.subscribers.map((s, i) => (
+                {filtered.map((s, i) => (
                   <tr
                     key={s.id}
                     className="border-t border-blush-100 hover:bg-blush-50/50"
