@@ -7,7 +7,7 @@ import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 
-const PRICE_LABEL = '$19';
+const PRICE_LABEL = '$1';
 
 export default function BudgetPage() {
   const today = new Date();
@@ -293,10 +293,10 @@ function BudgetPreview({ month, price, onUnlock, paying }) {
           {/* Trust row */}
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest text-mulberry/50">
             <span className="flex items-center gap-1.5">
-              <CreditCard size={11} className="text-rose-600" /> Secure payment
+              <CreditCard size={11} className="text-rose-600" /> Card or M-Pesa
             </span>
             <span className="flex items-center gap-1.5">
-              <Shield size={11} className="text-rose-600" /> Powered by Stripe
+              <Shield size={11} className="text-rose-600" /> Powered by Paystack
             </span>
             <span className="flex items-center gap-1.5">
               <Sparkles size={11} className="text-rose-600" /> One-time
