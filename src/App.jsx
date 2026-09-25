@@ -30,19 +30,29 @@ function SiteGate() {
   const isAdmin = !!user?.is_staff;
   const showRealSite = isLive || isAdmin;
 
-  // ── Not live + not admin → Coming Soon only
+  /* ─────────────────────────────────────────────
+     NOT LIVE + NOT ADMIN → Coming Soon + auth + tracker
+     The tracker is always reachable so paid users can
+     complete the Paystack return trip.
+  ───────────────────────────────────────────── */
   if (!showRealSite) {
     return (
       <Routes>
         <Route path="/" element={<ComingSoonPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        {/* Reachable so users returning from Paystack aren't bounced */}
+        <Route path="/budget-tracker" element={<BudgetPage />} />
+        {/* Admins can still land on their dashboard */}
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
 
-  // ── Admin dashboard gets its own layout (no public Navbar/Footer)
+  /* ─────────────────────────────────────────────
+     ADMIN LAYOUT → dark navbar, no public footer
+  ───────────────────────────────────────────── */
   if (isAdmin) {
     return (
       <Routes>
@@ -59,7 +69,7 @@ function SiteGate() {
           }
         />
 
-        {/* Admin can still browse the public site with the regular navbar */}
+        {/* Admin browsing the public site */}
         <Route
           path="*"
           element={
@@ -85,7 +95,9 @@ function SiteGate() {
     );
   }
 
-  // ── Regular visitor, site is live
+  /* ─────────────────────────────────────────────
+     REGULAR VISITOR — site is live
+  ───────────────────────────────────────────── */
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
