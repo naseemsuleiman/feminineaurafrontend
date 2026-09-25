@@ -11,6 +11,14 @@ const getBaseURL = () => {
   }
   return 'http://127.0.0.1:8000/api';
 };
+export const startCheckout = async () => {
+  const { data } = await API.post('/payments/create-checkout-session/', {
+    frontend_url: window.location.origin,
+  });
+  if (data.url) {
+    window.location.href = data.url;
+  }
+};
 
 const API = axios.create({
   baseURL: getBaseURL(),
