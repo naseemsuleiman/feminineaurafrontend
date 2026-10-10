@@ -20,40 +20,40 @@ export default function Signup() {
 
   // If already logged in, redirect by role
   useEffect(() => {
-  if (user) {
-    nav(user.is_staff ? '/admin-dashboard' : '/', { replace: true });
-  }
-}, [user, nav]);
+    if (user) {
+      nav(user.is_staff ? '/admin-dashboard' : '/', { replace: true });
+    }
+  }, [user, nav]);
 
-// 2. In submit(): redirect non-admin users to '/'
-const submit = async (e) => {
-  e.preventDefault();
-  setErr('');
-  if (!agree) return setErr('Please accept the terms to continue.');
-  setLoading(true);
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (!agree) return setErr('Please accept the terms to continue.');
+    setLoading(true);
 
-  try {
-    const result = await register(form.username, form.email, form.password);
+    try {
+      const result = await register(form.username, form.email, form.password);
 
-    if (!result.success) {
-      setErr(result.error || 'Registration failed.');
+      if (!result.success) {
+        setErr(result.error || 'Registration failed.');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch fresh user object to get is_staff property
+      const { data: me } = await API.get('/auth/me/');
+
+      if (me?.is_staff) {
+        nav('/admin-dashboard', { replace: true });
+      } else {
+        nav('/', { replace: true });
+      }
+    } catch (e) {
+      console.error('[Signup] error:', e);
+      setErr(prettyErr(e));
       setLoading(false);
-      return;
     }
-
-    const { data: me } = await API.get('/auth/me/');
-
-    if (me?.is_staff) {
-      nav('/admin-dashboard', { replace: true });
-    } else {
-      nav('/', { replace: true }); // <--- Redirect to homepage
-    }
-  } catch (e) {
-    console.error('[Signup] error:', e);
-    setErr(prettyErr(e));
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <AuthLayout

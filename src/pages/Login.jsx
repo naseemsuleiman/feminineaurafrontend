@@ -15,18 +15,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   // If already logged in, redirect by role
- useEffect(() => {
-  if (user) {
-    nav(user.is_staff ? '/admin-dashboard' : '/', { replace: true });
-  }
-}, [user, nav]);
-
-// 2. In submit()
-if (me?.is_staff) {
-  nav('/admin-dashboard', { replace: true });
-} else {
-  nav('/', { replace: true }); // <--- Redirect to homepage
-}
+  useEffect(() => {
+    if (user) {
+      nav(user.is_staff ? '/admin-dashboard' : '/', { replace: true });
+    }
+  }, [user, nav]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -42,14 +35,14 @@ if (me?.is_staff) {
         return;
       }
 
-      // Fetch the fresh user object to know the role
+      // Fetch fresh user object to determine role
       const { data: me } = await API.get('/auth/me/');
       console.log('[Login] user after login:', me);
 
       if (me?.is_staff) {
         nav('/admin-dashboard', { replace: true });
       } else {
-        nav('/budget-tracker', { replace: true });
+        nav('/', { replace: true });
       }
     } catch (e) {
       console.error('[Login] error:', e);
