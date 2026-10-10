@@ -15,11 +15,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   // If already logged in, redirect by role
-  useEffect(() => {
-    if (user) {
-      nav(user.is_staff ? '/admin-dashboard' : '/budget-tracker', { replace: true });
-    }
-  }, [user, nav]);
+ useEffect(() => {
+  if (user) {
+    nav(user.is_staff ? '/admin-dashboard' : '/', { replace: true });
+  }
+}, [user, nav]);
+
+// 2. In submit()
+if (me?.is_staff) {
+  nav('/admin-dashboard', { replace: true });
+} else {
+  nav('/', { replace: true }); // <--- Redirect to homepage
+}
 
   const submit = async (e) => {
     e.preventDefault();
