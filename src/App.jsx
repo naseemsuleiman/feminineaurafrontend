@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import useSiteStatus from './hooks/useSiteStatus';
 
 import Home from './pages/Home';
+import MemberHome from './pages/MemberHome';
 import ComingSoonPage from './pages/ComingSoonPage';
 import BudgetPage from './pages/BudgetPage';
 import ArticlesPage from './pages/ArticlesPage';
@@ -38,7 +39,7 @@ function SiteGate() {
   if (!showRealSite) {
     return (
       <Routes>
-        <Route path="/" element={<ComingSoonPage />} />
+        <Route path="/" element={user ? <MemberHome /> : <ComingSoonPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         {/* Reachable so users returning from Paystack aren't bounced */}
@@ -77,7 +78,7 @@ function SiteGate() {
               <Navbar />
               <main className="flex-1">
                 <Routes>
-                  <Route path="/" element={<Home />} />
+                  <Route path="/" element={<MemberHome />} />
                   <Route path="/empowerment" element={<ArticlesPage />} />
                   <Route path="/budget-tracker" element={<BudgetPage />} />
                   <Route path="/wisdom" element={<Wisdom />} />
@@ -96,14 +97,14 @@ function SiteGate() {
   }
 
   /* ─────────────────────────────────────────────
-     REGULAR VISITOR — site is live
+     REGULAR VISITOR / MEMBER — site is live
   ───────────────────────────────────────────── */
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={user ? <MemberHome /> : <Home />} />
           <Route path="/empowerment" element={<ArticlesPage />} />
           <Route path="/budget-tracker" element={<BudgetPage />} />
           <Route path="/wisdom" element={<Wisdom />} />
