@@ -22,7 +22,7 @@ export default function MemberHome() {
       try {
         // Fetch daily quote & latest article in parallel
         const [quoteRes, artRes] = await Promise.all([
-          API.get('/quote/').catch(() => ({ data: [] })),
+          API.get('/quotes/').catch(() => ({ data: [] })),
           API.get('/articles/').catch(() => ({ data: [] })),
         ]);
 
