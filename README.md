@@ -1,35 +1,49 @@
 # Feminine Aura Frontend
 
-A modern React + Vite frontend for the Feminine Aura platform, designed to deliver a polished, responsive, and elegant digital experience for wellness and lifestyle customers.
+A refined, high-converting React + Vite experience for the Feminine Aura brand — crafted to feel elegant, modern, and emotionally resonant across every screen.
 
-## Live Demo
+## Live Preview
 
 - https://www.feminine-aura.com/
+- https://feminineaurafrontend.vercel.app
 
 ## Overview
 
-This frontend application powers the user-facing experience for Feminine Aura. Built with React, Vite, Tailwind CSS, and modern frontend tooling, it is optimized for a fast, mobile-friendly, and visually refined interface.
+Feminine Aura Frontend is the digital face of a beauty and lifestyle brand designed around softness, confidence, and modern femininity. This app brings together premium visual design, seamless customer flows, and a responsive user experience that feels elevated from the very first click.
 
-## Features
+From product discovery to checkout support, the frontend is structured to deliver a polished, high-trust experience that aligns with the brand’s voice and values.
 
-- Responsive user interface
-- Fast development workflow with Vite
-- Tailwind CSS-based styling
-- Routing with React Router
-- Stripe-ready frontend support
-- Reusable component architecture
-- Mobile-friendly design system
-- Vercel deployment ready
+## Why This Frontend
+
+- Elegant, luxury-inspired user experience
+- Responsive layout for mobile, tablet, and desktop
+- Strong brand-first visual identity
+- Fast performance with Vite
+- Clean, scalable component architecture
+- Ready for deployment on Vercel
+- Integrated with modern web tooling and payment-ready flows
+
+## Core Features
+
+- Premium, responsive landing pages
+- Intuitive navigation and product discovery
+- Tailwind-powered styling system
+- React Router-based page flow
+- Stripe integration support for checkout experiences
+- Reusable UI components and modular structure
+- Performance-focused build setup
+- Mobile-first user experience
 
 ## Tech Stack
 
 - React 19
 - Vite
 - Tailwind CSS
+- JavaScript
 - React Router DOM
 - Axios
 - Stripe.js
-- Lucide React
+- Lucide React Icons
 
 ## Project Structure
 
@@ -37,6 +51,7 @@ This frontend application powers the user-facing experience for Feminine Aura. B
 feminineaurafrontend/
 ├── public/
 ├── src/
+│   ├── assets/
 │   ├── components/
 │   ├── pages/
 │   ├── services/
@@ -59,9 +74,9 @@ feminineaurafrontend/
 
 ## Prerequisites
 
-Before running the app, make sure you have:
+Before you begin, ensure the following are installed on your machine:
 
-- Node.js 18+
+- Node.js 18 or later
 - npm or yarn
 - Git
 
@@ -80,7 +95,7 @@ cd feminineaurafrontend
 npm install
 ```
 
-## Run Locally
+## Local Development
 
 Start the development server:
 
@@ -88,21 +103,21 @@ Start the development server:
 npm run dev
 ```
 
-Then open the app in your browser at the localhost URL shown in the terminal, usually:
+Then open the app in your browser at the local URL displayed in the terminal, typically:
 
 ```text
 http://localhost:5173
 ```
 
-## Build for Production
+## Production Build
 
-Create a production build:
+Create an optimized production build:
 
 ```bash
 npm run build
 ```
 
-Preview it locally:
+Preview the production build locally:
 
 ```bash
 npm run preview
@@ -110,25 +125,14 @@ npm run preview
 
 ## Environment Variables
 
-Create a `.env` or `.env.local` file if needed:
+If the app requires runtime configuration, create a `.env` or `.env.local` file in the root directory:
 
 ```env
 VITE_API_URL=http://localhost:8000
 VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
 ```
 
-## Deployment
-
-This project is configured for deployment on Vercel.
-
-### Deploy to Vercel
-
-1. Push the repository to GitHub
-2. Import the project in Vercel
-3. Add any environment variables
-4. Deploy the app
-
-## Scripts
+## Available Scripts
 
 ```json
 "scripts": {
@@ -139,9 +143,20 @@ This project is configured for deployment on Vercel.
 }
 ```
 
-## Contributing
+## Deployment
 
-Contributions are welcome. Please create a branch for your changes, then push and open a pull request.
+This project is configured for deployment on Vercel and can be connected directly to your GitHub repository.
+
+### Deploy to Vercel
+
+1. Push your repository to GitHub
+2. Import the project into Vercel
+3. Add any required environment variables
+4. Deploy the app
+
+## Contribution
+
+Contributions are welcome. If you’d like to improve the experience, follow the standard feature-branch workflow:
 
 ```bash
 git checkout -b feature/your-feature
@@ -150,14 +165,16 @@ git commit -m "Add your feature"
 git push origin feature/your-feature
 ```
 
+Then open a pull request for review.
+
 ## License
 
-This project currently does not include a license file. If you plan to distribute it publicly, consider adding a license that matches your intended usage.
+This project does not currently include a license file. If you plan to distribute or commercialize it, consider adding a license that matches your intended usage.
 
 ## Support
 
-For questions or issues, open an issue in the GitHub repository.
+For questions, feedback, or bug reports, open an issue within the GitHub repository.
 
 ---
 
-Built for Feminine Aura.
+Crafted with elegance for the Feminine Aura experience.
