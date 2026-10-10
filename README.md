@@ -4,7 +4,7 @@ A modern React + Vite frontend for the Feminine Aura platform, designed to deliv
 
 ## Live Demo
 
-- https://feminineaurafrontend.vercel.app
+- https://www.feminine-aura.com/
 
 ## Overview
 
