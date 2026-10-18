@@ -5,13 +5,7 @@ import {
 } from 'lucide-react';
 import API from '../api';
 
-const fmt = (n) =>
-  `$${Number(n || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-export default function BudgetTracker({ month }) {
+export default function BudgetTracker({ month, currency }) {
   const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -19,6 +13,14 @@ export default function BudgetTracker({ month }) {
   // Savings screen state
   const [savingsGoal, setSavingsGoal] = useState('');
   const [income, setIncome] = useState('');
+
+  // Format currency dynamically based on the selected currency
+  const fmt = (n) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'KES',
+    }).format(n || 0);
+  };
 
   const loadBudget = async () => {
     setLoading(true);
@@ -34,7 +36,6 @@ export default function BudgetTracker({ month }) {
 
   useEffect(() => {
     loadBudget();
-    // eslint-disable-next-line
   }, [month]);
 
   const startTracking = async () => {
@@ -42,6 +43,7 @@ export default function BudgetTracker({ month }) {
     try {
       await API.post('/budgets/', {
         month,
+        currency,
         monthly_income: income || 0,
         savings_goal: savingsGoal,
       });
@@ -75,15 +77,15 @@ export default function BudgetTracker({ month }) {
     const essentials = sum('essentials');
     const wants = sum('wants');
     const spent = essentials + wants;
-    const income = parseFloat(budget.monthly_income || 0);
-    const savingsGoal = parseFloat(budget.savings_goal || 0);
-    const budgetAfterSavings = income > 0 ? income - savingsGoal : null;
+    const incomeVal = parseFloat(budget.monthly_income || 0);
+    const savingsGoalVal = parseFloat(budget.savings_goal || 0);
+    const budgetAfterSavings = incomeVal > 0 ? incomeVal - savingsGoalVal : null;
     return {
       essentials,
       wants,
       spent,
-      income,
-      savingsGoal,
+      income: incomeVal,
+      savingsGoal: savingsGoalVal,
       budgetAfterSavings,
       remaining: budgetAfterSavings !== null ? budgetAfterSavings - spent : null,
     };
@@ -152,7 +154,7 @@ export default function BudgetTracker({ month }) {
             <label className="block mb-5">
               <span className="text-sm font-medium text-mulberry flex items-center gap-2">
                 <PiggyBank size={14} className="text-rose-600" />
-                Amount I want to save this month
+                Amount I want to save this month ({currency})
               </span>
               <input
                 type="number"

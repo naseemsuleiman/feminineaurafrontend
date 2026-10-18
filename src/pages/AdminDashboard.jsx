@@ -4,7 +4,7 @@ import {
   Users, Mail, Download, RefreshCw, Sparkles,
   Check, ShieldAlert, Search, TrendingUp, Crown,
   PiggyBank, FileText, Quote, Calendar, Wallet, BarChart3,
-  ArrowUpRight, Heart,
+  ArrowUpRight, Heart, Plus,
 } from 'lucide-react';
 import API from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +22,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+
+  // Content Creation State
+  const [newArticle, setNewArticle] = useState({ title: '', category: 'mental', body: '' });
+  const [newQuote, setNewQuote] = useState('');
+  const [posting, setPosting] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -58,6 +63,39 @@ export default function AdminDashboard() {
     if (!user) return nav('/login', { replace: true });
     if (!user.is_staff) return nav('/', { replace: true });
   }, [authLoading, user, nav]);
+
+  const handleCreateArticle = async (e) => {
+    e.preventDefault();
+    setPosting(true);
+    try {
+      await API.post('/articles/', {
+        ...newArticle,
+        slug: newArticle.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now()
+      });
+      setNewArticle({ title: '', category: 'mental', body: '' });
+      fetchAll();
+      alert('Article published successfully!');
+    } catch (e) {
+      alert('Error creating article: ' + (e.response?.data?.detail || 'Unknown error'));
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleCreateQuote = async (e) => {
+    e.preventDefault();
+    setPosting(true);
+    try {
+      await API.post('/quotes/', { text: newQuote });
+      setNewQuote('');
+      fetchAll();
+      alert('Quote added successfully!');
+    } catch (e) {
+      alert('Error creating quote.');
+    } finally {
+      setPosting(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const list = subs.subscribers || [];
@@ -140,7 +178,7 @@ export default function AdminDashboard() {
     { key: 'overview', label: 'Overview', icon: BarChart3 },
     { key: 'subscribers', label: 'Subscribers', icon: Users },
     { key: 'budgets', label: 'Budgets', icon: PiggyBank },
-    { key: 'content', label: 'Content', icon: FileText },
+    { key: 'content', label: 'Content Studio', icon: FileText },
   ];
 
   return (
@@ -175,7 +213,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Tabs — horizontally scrollable on mobile */}
+        {/* Tabs */}
         <div className="-mx-4 sm:mx-0 mb-6 sm:mb-8">
           <div className="flex gap-2 overflow-x-auto px-4 sm:px-0 pb-1 scrollbar-hide">
             {tabs.map(({ key, label, icon: Icon }) => (
@@ -204,9 +242,7 @@ export default function AdminDashboard() {
         {/* ─────────── OVERVIEW ─────────── */}
         {tab === 'overview' && (
           <div className="space-y-5 sm:space-y-8">
-            {/* Top stat cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {/* Total subscribers hero */}
               <div className="md:col-span-2 relative overflow-hidden rounded-[1.75rem] sm:rounded-[2rem] bg-gradient-to-br from-rose-600 via-rose-400 to-blush-200 p-6 sm:p-8 text-white shadow-card">
                 <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/25 blur-3xl" />
                 <div className="relative">
@@ -238,7 +274,6 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* Chart + Site status */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               <div className="lg:col-span-2 card">
                 <div className="flex items-center justify-between mb-5 sm:mb-6 gap-3">
@@ -287,9 +322,7 @@ export default function AdminDashboard() {
                       <span className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_0_6px_rgba(74,222,128,0.2)] shrink-0" />
                       <p className="font-serif text-2xl sm:text-3xl text-mulberry">Live</p>
                     </div>
-                    <p className="text-mulberry/60 text-sm">
-                      Public sees the full site.
-                    </p>
+                    <p className="text-mulberry/60 text-sm">Public sees the full site.</p>
                   </>
                 ) : (
                   <>
@@ -297,15 +330,12 @@ export default function AdminDashboard() {
                       <span className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_0_6px_rgba(200,122,139,0.2)] animate-pulse shrink-0" />
                       <p className="font-serif text-2xl sm:text-3xl text-mulberry">Coming Soon</p>
                     </div>
-                    <p className="text-mulberry/60 text-sm">
-                      Toggle in Django admin to launch.
-                    </p>
+                    <p className="text-mulberry/60 text-sm">Toggle in Django admin to launch.</p>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Recent subs + export */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
               <div className="lg:col-span-2 card">
                 <div className="flex items-center justify-between mb-5 sm:mb-6 gap-3">
@@ -325,10 +355,7 @@ export default function AdminDashboard() {
                 ) : (
                   <ul className="divide-y divide-blush-100">
                     {subs.subscribers.slice(0, 5).map((s) => (
-                      <li
-                        key={s.id}
-                        className="flex items-center justify-between gap-3 py-3"
-                      >
+                      <li key={s.id} className="flex items-center justify-between gap-3 py-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 grid place-items-center text-white text-xs font-medium shrink-0">
                             {s.email.charAt(0).toUpperCase()}
@@ -366,7 +393,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Glance cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <GlanceCard
                 icon={PiggyBank}
@@ -400,10 +426,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="relative flex-1 sm:flex-initial">
-                  <Search
-                    size={14}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400"
-                  />
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400" />
                   <input
                     type="text"
                     value={query}
@@ -424,13 +447,9 @@ export default function AdminDashboard() {
             </div>
 
             {filteredSubs.length === 0 ? (
-              <EmptyState
-                icon={Mail}
-                title={subs.count === 0 ? 'No subscribers yet.' : 'No matches.'}
-              />
+              <EmptyState icon={Mail} title={subs.count === 0 ? 'No subscribers yet.' : 'No matches.'} />
             ) : (
               <>
-                {/* Mobile card list */}
                 <ul className="sm:hidden divide-y divide-blush-100">
                   {filteredSubs.map((s, i) => (
                     <li key={s.id} className="py-3 flex items-start gap-3">
@@ -438,12 +457,8 @@ export default function AdminDashboard() {
                         {s.email.charAt(0).toUpperCase()}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-mulberry font-medium truncate">
-                          {s.email}
-                        </p>
-                        <p className="text-[11px] text-mulberry/50 mt-0.5">
-                          {new Date(s.created_at).toLocaleString()}
-                        </p>
+                        <p className="text-sm text-mulberry font-medium truncate">{s.email}</p>
+                        <p className="text-[11px] text-mulberry/50 mt-0.5">{new Date(s.created_at).toLocaleString()}</p>
                         <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-50 text-green-600 text-[10px] font-medium">
                           <Check size={10} /> Confirmed
                         </span>
@@ -453,7 +468,6 @@ export default function AdminDashboard() {
                   ))}
                 </ul>
 
-                {/* Desktop table */}
                 <div className="hidden sm:block overflow-x-auto -mx-6">
                   <table className="min-w-full text-sm">
                     <thead>
@@ -466,17 +480,10 @@ export default function AdminDashboard() {
                     </thead>
                     <tbody>
                       {filteredSubs.map((s, i) => (
-                        <tr
-                          key={s.id}
-                          className="border-t border-blush-100 hover:bg-blush-50/50"
-                        >
+                        <tr key={s.id} className="border-t border-blush-100 hover:bg-blush-50/50">
                           <td className="px-6 py-3 text-mulberry/40">{i + 1}</td>
-                          <td className="px-6 py-3 font-medium text-mulberry">
-                            {s.email}
-                          </td>
-                          <td className="px-6 py-3 text-mulberry/70">
-                            {new Date(s.created_at).toLocaleString()}
-                          </td>
+                          <td className="px-6 py-3 font-medium text-mulberry">{s.email}</td>
+                          <td className="px-6 py-3 text-mulberry/70">{new Date(s.created_at).toLocaleString()}</td>
                           <td className="px-6 py-3">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 text-xs font-medium">
                               <Check size={12} /> Confirmed
@@ -496,28 +503,12 @@ export default function AdminDashboard() {
         {tab === 'budgets' && (
           <div className="space-y-4 sm:space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              <GlanceCard
-                icon={PiggyBank}
-                title="Active Budgets"
-                value={budgets.length}
-                sub="Users who started tracking"
-              />
-              <GlanceCard
-                icon={Wallet}
-                title="Committed Savings"
-                value={`$${stats.totalSaved.toLocaleString()}`}
-                sub="Across all users this month"
-              />
+              <GlanceCard icon={PiggyBank} title="Active Budgets" value={budgets.length} sub="Users who started tracking" />
+              <GlanceCard icon={Wallet} title="Committed Savings" value={`$${stats.totalSaved.toLocaleString()}`} sub="Across all users this month" />
               <GlanceCard
                 icon={Heart}
                 title="Avg. Savings Goal"
-                value={
-                  budgets.length
-                    ? `$${(stats.totalSaved / budgets.length).toLocaleString(undefined, {
-                        maximumFractionDigits: 0,
-                      })}`
-                    : '$0'
-                }
+                value={budgets.length ? `$${(stats.totalSaved / budgets.length).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '$0'}
                 sub="Per user"
               />
             </div>
@@ -528,37 +519,26 @@ export default function AdminDashboard() {
                 <EmptyState icon={PiggyBank} title="No budgets created yet." />
               ) : (
                 <>
-                  {/* Mobile list */}
                   <ul className="sm:hidden divide-y divide-blush-100">
                     {budgets.map((b) => (
                       <li key={b.id} className="py-3">
                         <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <p className="text-sm font-medium text-mulberry truncate">
-                            {b.username}
-                          </p>
-                          <span className="text-[10px] uppercase tracking-widest text-mulberry/40 shrink-0">
-                            {b.month}
-                          </span>
+                          <p className="text-sm font-medium text-mulberry truncate">{b.username}</p>
+                          <span className="text-[10px] uppercase tracking-widest text-mulberry/40 shrink-0">{b.month}</span>
                         </div>
                         <div className="flex items-center justify-between text-xs text-mulberry/60">
-                          <span>Income ${Number(b.monthly_income).toLocaleString()}</span>
-                          <span className="font-medium text-rose-600">
-                            Save ${Number(b.savings_goal).toLocaleString()}
-                          </span>
+                          <span>Income {b.currency} {Number(b.monthly_income).toLocaleString()}</span>
+                          <span className="font-medium text-rose-600">Save {b.currency} {Number(b.savings_goal).toLocaleString()}</span>
                         </div>
                         {b.savings_pct != null && (
                           <div className="mt-2 h-1.5 rounded-full bg-blush-100 overflow-hidden">
-                            <div
-                              className="h-full bg-rose-600"
-                              style={{ width: `${Math.min(b.savings_pct, 100)}%` }}
-                            />
+                            <div className="h-full bg-rose-600" style={{ width: `${Math.min(b.savings_pct, 100)}%` }} />
                           </div>
                         )}
                       </li>
                     ))}
                   </ul>
 
-                  {/* Desktop table */}
                   <div className="hidden sm:block overflow-x-auto -mx-6">
                     <table className="min-w-full text-sm">
                       <thead>
@@ -572,23 +552,12 @@ export default function AdminDashboard() {
                       </thead>
                       <tbody>
                         {budgets.map((b) => (
-                          <tr
-                            key={b.id}
-                            className="border-t border-blush-100 hover:bg-blush-50/50"
-                          >
-                            <td className="px-6 py-3 font-medium text-mulberry">
-                              {b.username}
-                            </td>
+                          <tr key={b.id} className="border-t border-blush-100 hover:bg-blush-50/50">
+                            <td className="px-6 py-3 font-medium text-mulberry">{b.username}</td>
                             <td className="px-6 py-3 text-mulberry/70">{b.month}</td>
-                            <td className="px-6 py-3 text-mulberry/70">
-                              ${Number(b.monthly_income).toLocaleString()}
-                            </td>
-                            <td className="px-6 py-3 font-medium text-rose-600">
-                              ${Number(b.savings_goal).toLocaleString()}
-                            </td>
-                            <td className="px-6 py-3 text-mulberry/70">
-                              {b.savings_pct != null ? `${b.savings_pct}%` : '—'}
-                            </td>
+                            <td className="px-6 py-3 text-mulberry/70">{b.currency} {Number(b.monthly_income).toLocaleString()}</td>
+                            <td className="px-6 py-3 font-medium text-rose-600">{b.currency} {Number(b.savings_goal).toLocaleString()}</td>
+                            <td className="px-6 py-3 text-mulberry/70">{b.savings_pct != null ? `${b.savings_pct}%` : '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -600,26 +569,72 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ─────────── CONTENT ─────────── */}
+        {/* ─────────── CONTENT STUDIO ─────────── */}
         {tab === 'content' && (
-          <div className="space-y-4 sm:space-y-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5">
-              <GlanceCard
-                icon={FileText} title="All Articles"
-                value={articles.length} sub="Published"
-              />
-              {['mental', 'physical', 'financial'].map((c) => (
-                <GlanceCard
-                  key={c}
-                  icon={Quote} title={c.charAt(0).toUpperCase() + c.slice(1)}
-                  value={stats.articlesByCat[c] || 0}
-                  sub="articles"
-                />
-              ))}
+          <div className="space-y-8">
+            <div className="grid md:grid-cols-2 gap-6">
+              
+              {/* Article Form */}
+              <div className="card">
+                <h3 className="font-serif text-2xl mb-4 flex items-center gap-2">
+                  <FileText size={20} className="text-rose-600" /> Write New Article
+                </h3>
+                <form onSubmit={handleCreateArticle} className="space-y-4">
+                  <input 
+                    className="input" 
+                    placeholder="Article Title" 
+                    value={newArticle.title} 
+                    onChange={e => setNewArticle({...newArticle, title: e.target.value})} 
+                    required 
+                  />
+                  <select 
+                    className="input" 
+                    value={newArticle.category} 
+                    onChange={e => setNewArticle({...newArticle, category: e.target.value})}
+                  >
+                    <option value="mental">Mental Aura</option>
+                    <option value="physical">Physical Aura</option>
+                    <option value="financial">Financial Aura</option>
+                  </select>
+                  <textarea 
+                    className="input" 
+                    placeholder="Write your article body here..." 
+                    rows="6" 
+                    value={newArticle.body} 
+                    onChange={e => setNewArticle({...newArticle, body: e.target.value})} 
+                    required 
+                  />
+                  <button type="submit" disabled={posting} className="btn-primary w-full">
+                    {posting ? 'Publishing...' : 'Publish Article'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Quote Form */}
+              <div className="card h-fit">
+                <h3 className="font-serif text-2xl mb-4 flex items-center gap-2">
+                  <Quote size={20} className="text-rose-600" /> Add Daily Wisdom
+                </h3>
+                <form onSubmit={handleCreateQuote} className="space-y-4">
+                  <textarea 
+                    className="input" 
+                    placeholder="Enter a short quote..." 
+                    rows="3" 
+                    value={newQuote} 
+                    onChange={e => setNewQuote(e.target.value)} 
+                    required 
+                  />
+                  <button type="submit" disabled={posting} className="btn-primary w-full">
+                    {posting ? 'Saving...' : 'Add Quote'}
+                  </button>
+                </form>
+              </div>
+
             </div>
 
+            {/* Recent Articles List */}
             <div className="card">
-              <h2 className="font-serif text-xl sm:text-2xl mb-5 sm:mb-6">Recent Articles</h2>
+              <h3 className="font-serif text-2xl mb-4">Recent Articles</h3>
               {articles.length === 0 ? (
                 <EmptyState icon={FileText} title="No articles yet." />
               ) : (
@@ -630,9 +645,7 @@ export default function AdminDashboard() {
                         {a.category}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-serif text-base sm:text-lg text-mulberry">
-                          {a.title}
-                        </p>
+                        <p className="font-serif text-base sm:text-lg text-mulberry">{a.title}</p>
                         <p className="text-sm text-mulberry/60 line-clamp-2 mt-1">
                           {a.excerpt || a.body?.slice(0, 120)}
                         </p>
@@ -652,7 +665,6 @@ export default function AdminDashboard() {
   );
 }
 
-/* ─────────── small components ─────────── */
 function StatCard({ icon: Icon, label, value, sub }) {
   return (
     <div className="card relative overflow-hidden">
@@ -662,9 +674,7 @@ function StatCard({ icon: Icon, label, value, sub }) {
           <Icon size={12} className="text-rose-600" />
           <span className="truncate">{label}</span>
         </div>
-        <p className="font-serif text-4xl sm:text-5xl text-mulberry break-all">
-          {value}
-        </p>
+        <p className="font-serif text-4xl sm:text-5xl text-mulberry break-all">{value}</p>
         <p className="text-mulberry/60 text-xs sm:text-sm mt-2 sm:mt-3">{sub}</p>
       </div>
     </div>
@@ -678,9 +688,7 @@ function GlanceCard({ icon: Icon, title, value, sub }) {
         <Icon size={12} className="text-rose-600 shrink-0" />
         <span className="truncate">{title}</span>
       </div>
-      <p className="font-serif text-2xl sm:text-3xl text-mulberry break-words">
-        {value}
-      </p>
+      <p className="font-serif text-2xl sm:text-3xl text-mulberry break-words">{value}</p>
       <p className="text-mulberry/60 text-xs sm:text-sm mt-2 break-words">{sub}</p>
     </div>
   );
