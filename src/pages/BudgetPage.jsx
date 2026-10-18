@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import {
-  Sparkles, Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe,
-} from 'lucide-react';
+import { Sparkles, Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, DollarSign } from 'lucide-react';
 import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
@@ -11,14 +9,13 @@ const REF_KEY = 'fa_paystack_reference';
 
 export default function BudgetPage() {
   const today = new Date();
-  const [month, setMonth] = useState(
-    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-  );
+  const [month, setMonth] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
   
+  // The currency the user wants to track their budget in
   const [currency, setCurrency] = useState(localStorage.getItem('fa_currency') || 'KES');
+  
   const { user, loading, loadUser } = useAuth();
   const [params] = useSearchParams();
-  const nav = useNavigate();
   const [paying, setPaying] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -31,17 +28,12 @@ export default function BudgetPage() {
     localStorage.setItem('fa_currency', newCurr);
   };
 
-  /* ─────────────────────────────────────────────
-     On return from Paystack: verify the transaction
-  ───────────────────────────────────────────── */
   useEffect(() => {
     const reference = localStorage.getItem(REF_KEY);
-
     if (paymentStatus === 'success') {
       if (reference) {
         setVerifying(true);
         setNotice({ type: 'success', text: 'Confirming your payment…' });
-
         API.post('/payments/verify/', { reference })
           .then(() => {
             localStorage.removeItem(REF_KEY);
@@ -49,7 +41,6 @@ export default function BudgetPage() {
             return loadUser();
           })
           .catch((err) => {
-            console.error('[VERIFY] failed:', err?.response?.data || err);
             setNotice({ type: 'info', text: 'We are still confirming your payment. Refresh in a moment.' });
             loadUser();
           })
@@ -61,69 +52,53 @@ export default function BudgetPage() {
         return () => clearTimeout(t);
       }
     }
-
     if (paymentStatus === 'cancelled') {
-      setNotice({ type: 'info', text: 'Checkout cancelled. You can try again anytime.' });
+      setNotice({ type: 'info', text: 'Checkout cancelled.' });
       localStorage.removeItem(REF_KEY);
     }
   }, [paymentStatus, loadUser]);
 
-  /* ─────────────────────────────────────────────
-     Start checkout — store reference before redirect
-  ───────────────────────────────────────────── */
   const handleUnlock = async () => {
     setPaying(true);
     try {
       const { data } = await API.post('/payments/create-checkout-session/', {
         frontend_url: window.location.origin,
-        currency: currency, // Pass selected currency to backend
+        currency: currency, // Pass their tracker choice
       });
       if (data.url) {
-        if (data.reference) {
-          localStorage.setItem(REF_KEY, data.reference);
-        }
+        if (data.reference) localStorage.setItem(REF_KEY, data.reference);
         window.location.href = data.url;
-      } else {
-        alert('Could not start checkout. Please try again.');
-        setPaying(false);
       }
     } catch (e) {
-      console.error(e);
-      alert(e?.response?.data?.error || 'Could not start checkout. Please try again.');
+      alert(e?.response?.data?.error || 'Could not start checkout.');
       setPaying(false);
     }
   };
 
   if (loading) return null;
-
   const hasAccess = user?.has_paid || user?.is_staff;
   const isAdmin = !!user?.is_staff;
 
-  const PRICE_LABELS = { KES: 'KES 1', USD: '$1', NGN: '₦1,000' };
+  // Determine what Paystack will actually charge them based on their selection
+  const paystackCurrency = currency === 'KES' ? 'KES' : 'USD';
+  const paymentPriceLabel = paystackCurrency === 'KES' ? 'KES 1' : '$1';
 
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-blush-100 via-blush-50 to-blush-200 opacity-60 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-rose-400/15 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-blush-200/50 blur-3xl pointer-events-none" />
-
+      
       <div className="relative max-w-7xl mx-auto px-6 py-16">
-        {/* Header */}
         <div className="text-center mb-10">
-          <p className="uppercase tracking-[0.3em] text-xs text-rose-600 mb-4">
-            Financial Empowerment
-          </p>
+          <p className="uppercase tracking-[0.3em] text-xs text-rose-600 mb-4">Financial Empowerment</p>
           <h1 className="section-title">30-Day Budget Tracker</h1>
-          <p className="text-mulberry/60 mt-3 max-w-2xl mx-auto">
-            Financial freedom is self-care. Track daily, spend intentionally, glow quietly.
-          </p>
+          <p className="text-mulberry/60 mt-3 max-w-2xl mx-auto">Track daily, spend intentionally, glow quietly.</p>
         </div>
 
-        {/* Currency & Month Selector */}
+        {/* Currency Selector & Month Picker */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
           <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-soft border border-blush-100">
             <span className="text-sm font-medium text-mulberry flex items-center gap-1.5">
-              <Globe size={14} className="text-rose-600" /> Currency:
+              <Globe size={14} className="text-rose-600" /> Display Currency:
             </span>
             <select 
               value={currency} 
@@ -133,6 +108,8 @@ export default function BudgetPage() {
               <option value="KES">KES (Ksh)</option>
               <option value="USD">USD ($)</option>
               <option value="NGN">NGN (₦)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
             </select>
           </div>
 
@@ -146,7 +123,6 @@ export default function BudgetPage() {
           )}
         </div>
 
-        {/* Notices */}
         {notice && (
           <div className={`max-w-2xl mx-auto mb-8 flex items-center gap-3 px-5 py-4 rounded-2xl text-sm ${
             notice.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-blush-100 border border-blush-200 text-mulberry/70'
@@ -156,7 +132,6 @@ export default function BudgetPage() {
           </div>
         )}
 
-        {/* Not logged in */}
         {!user && (
           <div className="card max-w-md mx-auto text-center">
             <h3 className="font-serif text-2xl mb-3">Sign in to track</h3>
@@ -168,7 +143,6 @@ export default function BudgetPage() {
           </div>
         )}
 
-        {/* Logged in + access → tracker */}
         {user && hasAccess && (
           <>
             {isAdmin && (
@@ -180,11 +154,11 @@ export default function BudgetPage() {
           </>
         )}
 
-        {/* Logged in, no access → preview + paywall */}
         {user && !hasAccess && (
           <BudgetPreview
             month={month}
-            price={PRICE_LABELS[currency] || 'KES 1'}
+            price={paymentPriceLabel}
+            paystackCurrency={paystackCurrency}
             currency={currency}
             onUnlock={handleUnlock}
             paying={paying}
@@ -198,7 +172,7 @@ export default function BudgetPage() {
 /* ═══════════════════════════════════════════════════════
    PREVIEW + PAYWALL
 ═══════════════════════════════════════════════════════ */
-function BudgetPreview({ month, price, currency, onUnlock, paying }) {
+function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, paying }) {
   const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
 
   return (
@@ -242,7 +216,7 @@ function BudgetPreview({ month, price, currency, onUnlock, paying }) {
           <h3 className="font-serif text-3xl text-mulberry mb-3">Unlock Your Tracker</h3>
 
           <p className="text-mulberry/65 leading-relaxed mb-6">
-            Get lifetime access to the 30-Day Budget Tracker. Track essentials, wants, and savings with grace and intention.
+            Get lifetime access to the 30-Day Budget Tracker. Track essentials, wants, and savings in <strong>{currency}</strong>.
           </p>
 
           <ul className="text-left space-y-2.5 mb-7 max-w-xs mx-auto">
@@ -260,6 +234,10 @@ function BudgetPreview({ month, price, currency, onUnlock, paying }) {
               <>Unlock for {price} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition" /></>
             )}
           </button>
+          
+          <p className="text-[10px] text-mulberry/40 mt-3 uppercase tracking-widest">
+            * Billed in {paystackCurrency} via Paystack
+          </p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest text-mulberry/50">
             <span className="flex items-center gap-1.5"><CreditCard size={11} className="text-rose-600" /> Card or M-Pesa</span>
