@@ -11,9 +11,10 @@ const getBaseURL = () => {
   }
   return 'http://127.0.0.1:8000/api';
 };
-export const startCheckout = async () => {
+export const startCheckout = async (currency = 'KES') => {
   const { data } = await API.post('/payments/create-checkout-session/', {
     frontend_url: window.location.origin,
+    currency: currency,
   });
   if (data.url) {
     window.location.href = data.url;
