@@ -5,22 +5,21 @@ import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 
-const REF_KEY = 'fa_paystack_reference';
+const REF_KEY = 'fa_pesapal_reference';
 
 export default function BudgetPage() {
   const today = new Date();
   const [month, setMonth] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
-  
-  // The currency the user wants to track their budget in
   const [currency, setCurrency] = useState(localStorage.getItem('fa_currency') || 'KES');
   
   const { user, loading, loadUser } = useAuth();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams(); // Added setParams to clear URL later
   const [paying, setPaying] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  const paymentStatus = params.get('payment');
+  // Pesapal specific callback parameters
+  const orderTrackingId = params.get('OrderTrackingId');
 
   const handleCurrencyChange = (e) => {
     const newCurr = e.target.value;
@@ -29,45 +28,38 @@ export default function BudgetPage() {
   };
 
   useEffect(() => {
-    const reference = localStorage.getItem(REF_KEY);
-    if (paymentStatus === 'success') {
-      if (reference) {
-        setVerifying(true);
-        setNotice({ type: 'success', text: 'Confirming your payment…' });
-        API.post('/payments/verify/', { reference })
-          .then(() => {
-            localStorage.removeItem(REF_KEY);
-            setNotice({ type: 'success', text: 'Payment confirmed. Unlocking…' });
-            return loadUser();
-          })
-          .catch((err) => {
-            setNotice({ type: 'info', text: 'We are still confirming your payment. Refresh in a moment.' });
-            loadUser();
-          })
-          .finally(() => setVerifying(false));
-      } else {
-        setNotice({ type: 'success', text: 'Payment received! Checking access…' });
-        loadUser();
-        const t = setTimeout(() => loadUser(), 2500);
-        return () => clearTimeout(t);
-      }
+    // If we return from Pesapal with an OrderTrackingId
+    if (orderTrackingId) {
+      setVerifying(true);
+      setNotice({ type: 'success', text: 'Confirming your payment…' });
+      
+      API.post('/payments/verify/', { reference: orderTrackingId })
+        .then(() => {
+          localStorage.removeItem(REF_KEY);
+          setNotice({ type: 'success', text: 'Payment confirmed. Unlocking…' });
+          // Optional: Clean up the URL so it looks nice
+          setParams({});
+          return loadUser();
+        })
+        .catch((err) => {
+          const status = err.response?.data?.status || 'Processing';
+          setNotice({ type: 'info', text: `Payment is ${status}. Refresh in a moment.` });
+          loadUser();
+        })
+        .finally(() => setVerifying(false));
     }
-    if (paymentStatus === 'cancelled') {
-      setNotice({ type: 'info', text: 'Checkout cancelled.' });
-      localStorage.removeItem(REF_KEY);
-    }
-  }, [paymentStatus, loadUser]);
+  }, [orderTrackingId, loadUser, setParams]);
 
   const handleUnlock = async () => {
     setPaying(true);
     try {
       const { data } = await API.post('/payments/create-checkout-session/', {
         frontend_url: window.location.origin,
-        currency: currency, // Pass their tracker choice
+        currency: currency, 
       });
       if (data.url) {
         if (data.reference) localStorage.setItem(REF_KEY, data.reference);
-        window.location.href = data.url;
+        window.location.href = data.url; // Redirect to Pesapal iframe
       }
     } catch (e) {
       alert(e?.response?.data?.error || 'Could not start checkout.');
@@ -79,13 +71,12 @@ export default function BudgetPage() {
   const hasAccess = user?.has_paid || user?.is_staff;
   const isAdmin = !!user?.is_staff;
 
-  // Determine what Paystack will actually charge them based on their selection
   const paystackCurrency = currency === 'KES' ? 'KES' : 'USD';
   const paymentPriceLabel = paystackCurrency === 'KES' ? 'KES 1' : '$1';
 
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-blush-100 via-blush-50 to-blush-200 opacity-60 pointer-events-none" />
+      {/* ... KEEP YOUR EXISTING HTML STRUCTURE HERE EXACTLY AS IT IS ... */}
       
       <div className="relative max-w-7xl mx-auto px-6 py-16">
         <div className="text-center mb-10">
@@ -177,6 +168,7 @@ function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, pay
 
   return (
     <div className="relative max-w-5xl mx-auto">
+      {/* ... KEEP BLURRED BACKGROUND IDENTICAL ... */}
       <div className="select-none pointer-events-none blur-[6px] opacity-60">
         <div className="rounded-3xl bg-white p-6 md:p-8 shadow-card border border-blush-100">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -236,12 +228,12 @@ function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, pay
           </button>
           
           <p className="text-[10px] text-mulberry/40 mt-3 uppercase tracking-widest">
-            * Billed in {paystackCurrency} via Paystack
+            * Billed in {paystackCurrency} via Pesapal
           </p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest text-mulberry/50">
-            <span className="flex items-center gap-1.5"><CreditCard size={11} className="text-rose-600" /> Card or M-Pesa</span>
-            <span className="flex items-center gap-1.5"><Shield size={11} className="text-rose-600" /> Powered by Paystack</span>
+            <span className="flex items-center gap-1.5"><CreditCard size={11} className="text-rose-600" /> M-Pesa or Card</span>
+            <span className="flex items-center gap-1.5"><Shield size={11} className="text-rose-600" /> Powered by Pesapal</span>
             <span className="flex items-center gap-1.5"><Sparkles size={11} className="text-rose-600" /> One-time</span>
           </div>
         </div>
