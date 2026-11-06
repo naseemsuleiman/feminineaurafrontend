@@ -1,24 +1,32 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Sparkles, Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, DollarSign } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Sparkles, Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, Calendar } from 'lucide-react';
 import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
 import API from '../api';
 
 const REF_KEY = 'fa_pesapal_reference';
+const PENDING_PLAN_KEY = 'fa_pending_plan';
+
+// Dynamic plan definitions with test pricing
+const PLAN_PRICES = {
+  monthly: { KES: 1.00, USD: 0.01, label: 'Monthly' },
+  quarterly: { KES: 1.00, USD: 0.01, label: 'Quarterly (3 Mo)' },
+  yearly: { KES: 1.00, USD: 0.01, label: 'Yearly (12 Mo)' },
+};
 
 export default function BudgetPage() {
   const today = new Date();
   const [month, setMonth] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
   const [currency, setCurrency] = useState(localStorage.getItem('fa_currency') || 'KES');
+  const [plan, setPlan] = useState('monthly');
   
   const { user, loading, loadUser } = useAuth();
-  const [params, setParams] = useSearchParams(); // Added setParams to clear URL later
+  const [params, setParams] = useSearchParams();
   const [paying, setPaying] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  // Pesapal specific callback parameters
   const orderTrackingId = params.get('OrderTrackingId');
 
   const handleCurrencyChange = (e) => {
@@ -28,16 +36,17 @@ export default function BudgetPage() {
   };
 
   useEffect(() => {
-    // If we return from Pesapal with an OrderTrackingId
     if (orderTrackingId) {
       setVerifying(true);
       setNotice({ type: 'success', text: 'Confirming your payment…' });
       
-      API.post('/payments/verify/', { reference: orderTrackingId })
+      const savedPlan = localStorage.getItem(PENDING_PLAN_KEY) || 'monthly';
+      
+      API.post('/payments/verify/', { reference: orderTrackingId, plan: savedPlan })
         .then(() => {
           localStorage.removeItem(REF_KEY);
-          setNotice({ type: 'success', text: 'Payment confirmed. Unlocking…' });
-          // Optional: Clean up the URL so it looks nice
+          localStorage.removeItem(PENDING_PLAN_KEY);
+          setNotice({ type: 'success', text: 'Payment confirmed. Unlocking access…' });
           setParams({});
           return loadUser();
         })
@@ -55,11 +64,13 @@ export default function BudgetPage() {
     try {
       const { data } = await API.post('/payments/create-checkout-session/', {
         frontend_url: window.location.origin,
-        currency: currency, 
+        currency: currency,
+        plan: plan,
       });
       if (data.url) {
         if (data.reference) localStorage.setItem(REF_KEY, data.reference);
-        window.location.href = data.url; // Redirect to Pesapal iframe
+        localStorage.setItem(PENDING_PLAN_KEY, plan);
+        window.location.href = data.url;
       }
     } catch (e) {
       alert(e?.response?.data?.error || 'Could not start checkout.');
@@ -72,12 +83,11 @@ export default function BudgetPage() {
   const isAdmin = !!user?.is_staff;
 
   const paystackCurrency = currency === 'KES' ? 'KES' : 'USD';
-  const paymentPriceLabel = paystackCurrency === 'KES' ? 'KES 1' : '$1';
+  const priceValue = PLAN_PRICES[plan][paystackCurrency];
+  const paymentPriceLabel = paystackCurrency === 'KES' ? `KES ${priceValue.toFixed(2)}` : `$${priceValue.toFixed(2)}`;
 
   return (
     <section className="relative overflow-hidden">
-      {/* ... KEEP YOUR EXISTING HTML STRUCTURE HERE EXACTLY AS IT IS ... */}
-      
       <div className="relative max-w-7xl mx-auto px-6 py-16">
         <div className="text-center mb-10">
           <p className="uppercase tracking-[0.3em] text-xs text-rose-600 mb-4">Financial Empowerment</p>
@@ -85,11 +95,11 @@ export default function BudgetPage() {
           <p className="text-mulberry/60 mt-3 max-w-2xl mx-auto">Track daily, spend intentionally, glow quietly.</p>
         </div>
 
-        {/* Currency Selector & Month Picker */}
+        {/* Currency & Month Selector */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
           <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-soft border border-blush-100">
             <span className="text-sm font-medium text-mulberry flex items-center gap-1.5">
-              <Globe size={14} className="text-rose-600" /> Display Currency:
+              <Globe size={14} className="text-rose-600" /> Currency:
             </span>
             <select 
               value={currency} 
@@ -151,6 +161,8 @@ export default function BudgetPage() {
             price={paymentPriceLabel}
             paystackCurrency={paystackCurrency}
             currency={currency}
+            plan={plan}
+            setPlan={setPlan}
             onUnlock={handleUnlock}
             paying={paying}
           />
@@ -161,14 +173,14 @@ export default function BudgetPage() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   PREVIEW + PAYWALL
+   PREVIEW + PAYWALL MODAL
 ═══════════════════════════════════════════════════════ */
-function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, paying }) {
+function BudgetPreview({ month, price, paystackCurrency, currency, plan, setPlan, onUnlock, paying }) {
   const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
 
   return (
     <div className="relative max-w-5xl mx-auto">
-      {/* ... KEEP BLURRED BACKGROUND IDENTICAL ... */}
+      {/* Blurred background preview */}
       <div className="select-none pointer-events-none blur-[6px] opacity-60">
         <div className="rounded-3xl bg-white p-6 md:p-8 shadow-card border border-blush-100">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -199,27 +211,52 @@ function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, pay
         </div>
       </div>
 
+      {/* Paywall Overlay */}
       <div className="absolute inset-0 flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center bg-white/95 backdrop-blur rounded-[2rem] p-8 md:p-10 shadow-card border border-blush-100">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 mb-5 shadow-soft">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 mb-4 shadow-soft">
             <Lock size={26} className="text-white" />
           </div>
 
-          <h3 className="font-serif text-3xl text-mulberry mb-3">Unlock Your Tracker</h3>
+          <h3 className="font-serif text-3xl text-mulberry mb-2">Unlock Your Tracker</h3>
+          <p className="text-mulberry/65 text-sm mb-6">Select your access duration and start tracking.</p>
 
-          <p className="text-mulberry/65 leading-relaxed mb-6">
-            Get lifetime access to the 30-Day Budget Tracker. Track essentials, wants, and savings in <strong>{currency}</strong>.
-          </p>
+          {/* Plan Duration Selector */}
+          <div className="mb-6">
+            <label className="text-xs font-semibold uppercase tracking-wider text-mulberry/60 flex items-center justify-center gap-1.5 mb-2.5">
+              <Calendar size={13} className="text-rose-600" /> Select Subscription Plan
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'monthly', label: 'Monthly' },
+                { key: 'quarterly', label: '3 Months' },
+                { key: 'yearly', label: 'Yearly' },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setPlan(item.key)}
+                  className={`py-2.5 px-2 rounded-xl text-xs font-medium border transition-all ${
+                    plan === item.key
+                      ? 'border-rose-600 bg-rose-50 text-rose-600 font-bold shadow-xs'
+                      : 'border-blush-200 bg-white text-mulberry/70 hover:bg-blush-50'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <ul className="text-left space-y-2.5 mb-7 max-w-xs mx-auto">
-            {['Full 30-day editable tracker', 'Locked-in savings commitment', 'Live essentials & wants totals', 'Export to CSV anytime', 'Lifetime access — pay once'].map((f) => (
-              <li key={f} className="flex items-start gap-2.5 text-sm text-mulberry/75">
-                <Check size={15} className="text-rose-600 mt-0.5 shrink-0" /> {f}
+          <ul className="text-left space-y-2 mb-6 max-w-xs mx-auto text-xs text-mulberry/75">
+            {['Full 30-day editable tracker', 'Locked-in savings commitment', 'Live essentials & wants totals', 'Export to CSV anytime'].map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <Check size={14} className="text-rose-600 mt-0.5 shrink-0" /> {f}
               </li>
             ))}
           </ul>
 
-          <button onClick={onUnlock} disabled={paying} className="btn-primary btn-shimmer w-full !py-4 text-base group disabled:opacity-60">
+          <button onClick={onUnlock} disabled={paying} className="btn-primary btn-shimmer w-full !py-3.5 text-base group disabled:opacity-60">
             {paying ? (
               <><span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin mr-2" /> Redirecting…</>
             ) : (
@@ -231,10 +268,9 @@ function BudgetPreview({ month, price, paystackCurrency, currency, onUnlock, pay
             * Billed in {paystackCurrency} via Pesapal
           </p>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-widest text-mulberry/50">
+          <div className="mt-4 flex items-center justify-center gap-4 text-[10px] uppercase tracking-widest text-mulberry/50">
             <span className="flex items-center gap-1.5"><CreditCard size={11} className="text-rose-600" /> M-Pesa or Card</span>
             <span className="flex items-center gap-1.5"><Shield size={11} className="text-rose-600" /> Powered by Pesapal</span>
-            <span className="flex items-center gap-1.5"><Sparkles size={11} className="text-rose-600" /> One-time</span>
           </div>
         </div>
       </div>
