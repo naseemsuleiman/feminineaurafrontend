@@ -3,9 +3,13 @@ import {
   PiggyBank, Wallet, ArrowRight, Lock, Heart, ShoppingBag,
   Download, Sparkles, Check, TrendingUp,
 } from 'lucide-react';
+import { useCurrency } from '../context/CurrencyContext';
 import API from '../api';
 
-export default function BudgetTracker({ month, currency }) {
+export default function BudgetTracker({ month, currency: propCurrency }) {
+  const { currency: contextCurrency, formatPrice } = useCurrency();
+  const activeCurrency = propCurrency || contextCurrency || 'KES';
+
   const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -14,13 +18,7 @@ export default function BudgetTracker({ month, currency }) {
   const [savingsGoal, setSavingsGoal] = useState('');
   const [income, setIncome] = useState('');
 
-  // Format currency dynamically based on the selected currency
-  const fmt = (n) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'KES',
-    }).format(n || 0);
-  };
+  const fmt = (n) => formatPrice(n || 0, activeCurrency);
 
   const loadBudget = async () => {
     setLoading(true);
@@ -43,7 +41,7 @@ export default function BudgetTracker({ month, currency }) {
     try {
       await API.post('/budgets/', {
         month,
-        currency,
+        currency: activeCurrency,
         monthly_income: income || 0,
         savings_goal: savingsGoal,
       });
@@ -93,7 +91,14 @@ export default function BudgetTracker({ month, currency }) {
 
   const exportCSV = () => {
     if (!budget) return;
-    const header = ['Day', 'Date', 'Essentials', 'Wants', 'Daily Total', 'Notes'];
+    const header = [
+      'Day',
+      'Date',
+      `Essentials (${activeCurrency})`,
+      `Wants (${activeCurrency})`,
+      `Daily Total (${activeCurrency})`,
+      'Notes',
+    ];
     const rows = budget.entries.map((e) => [
       e.day, e.date || '', e.essentials, e.wants, e.daily_total, `"${e.notes || ''}"`,
     ]);
@@ -102,7 +107,7 @@ export default function BudgetTracker({ month, currency }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `feminine-aura-budget-${month}.csv`;
+    a.download = `feminine-aura-budget-${month}-${activeCurrency}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -116,9 +121,6 @@ export default function BudgetTracker({ month, currency }) {
     );
   }
 
-  /* ─────────────────────────────────────────────
-     SAVINGS SCREEN (no budget yet)
-  ───────────────────────────────────────────── */
   if (!budget) {
     const savingsNum = parseFloat(savingsGoal) || 0;
     const incomeNum = parseFloat(income) || 0;
@@ -140,7 +142,7 @@ export default function BudgetTracker({ month, currency }) {
               <div>
                 <h3 className="font-serif text-2xl text-mulberry">Set Your Savings First</h3>
                 <p className="text-xs uppercase tracking-[0.25em] text-rose-600 mt-1">
-                  {month}
+                  {month} · {activeCurrency}
                 </p>
               </div>
             </div>
@@ -154,7 +156,7 @@ export default function BudgetTracker({ month, currency }) {
             <label className="block mb-5">
               <span className="text-sm font-medium text-mulberry flex items-center gap-2">
                 <PiggyBank size={14} className="text-rose-600" />
-                Amount I want to save this month ({currency})
+                Amount I want to save this month ({activeCurrency})
               </span>
               <input
                 type="number"
@@ -170,7 +172,7 @@ export default function BudgetTracker({ month, currency }) {
             <label className="block mb-5">
               <span className="text-sm font-medium text-mulberry flex items-center gap-2">
                 <Wallet size={14} className="text-rose-600" />
-                Monthly income
+                Monthly income ({activeCurrency})
                 <span className="text-xs text-mulberry/50 font-normal">(optional)</span>
               </span>
               <input
@@ -183,7 +185,6 @@ export default function BudgetTracker({ month, currency }) {
               />
             </label>
 
-            {/* Live feedback */}
             {savingsNum > 0 && (
               <div
                 className={`rounded-2xl p-4 text-sm mb-6 flex items-start gap-3 ${
@@ -230,9 +231,6 @@ export default function BudgetTracker({ month, currency }) {
     );
   }
 
-  /* ─────────────────────────────────────────────
-     DAILY TRACKER
-  ───────────────────────────────────────────── */
   return (
     <div className="space-y-8">
       {/* Savings Commitment Banner */}
@@ -252,7 +250,7 @@ export default function BudgetTracker({ month, currency }) {
             </p>
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-sm">
-            <Sparkles size={14} /> Your intention
+            <Sparkles size={14} /> Your intention ({activeCurrency})
           </div>
         </div>
       </div>
@@ -271,7 +269,6 @@ export default function BudgetTracker({ month, currency }) {
           </button>
         </div>
 
-        {/* Category cards */}
         <div className="grid md:grid-cols-3 gap-4">
           {[
             {
@@ -323,7 +320,6 @@ export default function BudgetTracker({ month, currency }) {
           })}
         </div>
 
-        {/* Big numbers */}
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           {[
             { label: 'Saved', value: fmt(totals.savingsGoal), cls: 'text-rose-600', icon: PiggyBank },
@@ -353,7 +349,7 @@ export default function BudgetTracker({ month, currency }) {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h3 className="font-serif text-2xl">30-Day Daily Tracker</h3>
           <span className="text-xs text-mulberry/50 uppercase tracking-widest">
-            Essentials · Wants only
+            Essentials · Wants only ({activeCurrency})
           </span>
         </div>
         <div className="overflow-x-auto -mx-6">

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Sparkles, Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, Calendar } from 'lucide-react';
+import { Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, Calendar } from 'lucide-react';
 import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import API from '../api';
 
 const REF_KEY = 'fa_pesapal_reference';
@@ -18,9 +19,9 @@ const PLAN_PRICES = {
 export default function BudgetPage() {
   const today = new Date();
   const [month, setMonth] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
-  const [currency, setCurrency] = useState(localStorage.getItem('fa_currency') || 'KES');
+  const { currency, setCurrency, formatPrice, convertFromUSD, worldCurrencies } = useCurrency();
   const [plan, setPlan] = useState('monthly');
-  
+
   const { user, loading, loadUser } = useAuth();
   const [params, setParams] = useSearchParams();
   const [paying, setPaying] = useState(false);
@@ -30,18 +31,16 @@ export default function BudgetPage() {
   const orderTrackingId = params.get('OrderTrackingId');
 
   const handleCurrencyChange = (e) => {
-    const newCurr = e.target.value;
-    setCurrency(newCurr);
-    localStorage.setItem('fa_currency', newCurr);
+    setCurrency(e.target.value);
   };
 
   useEffect(() => {
     if (orderTrackingId) {
       setVerifying(true);
       setNotice({ type: 'success', text: 'Confirming your payment…' });
-      
+
       const savedPlan = localStorage.getItem(PENDING_PLAN_KEY) || 'monthly';
-      
+
       API.post('/payments/verify/', { reference: orderTrackingId, plan: savedPlan })
         .then(() => {
           localStorage.removeItem(REF_KEY);
@@ -82,9 +81,11 @@ export default function BudgetPage() {
   const hasAccess = user?.has_paid || user?.is_staff;
   const isAdmin = !!user?.is_staff;
 
-  const paystackCurrency = currency === 'KES' ? 'KES' : 'USD';
-  const priceValue = PLAN_PRICES[plan][paystackCurrency];
-  const paymentPriceLabel = paystackCurrency === 'KES' ? `KES ${priceValue.toFixed(2)}` : `$${priceValue.toFixed(2)}`;
+  const pesapalCurrency = currency === 'KES' ? 'KES' : 'USD';
+  const displayPrice =
+    currency === 'KES'
+      ? formatPrice(PLAN_PRICES[plan].KES, 'KES')
+      : formatPrice(convertFromUSD(PLAN_PRICES[plan].USD, currency), currency);
 
   return (
     <section className="relative overflow-hidden">
@@ -97,20 +98,30 @@ export default function BudgetPage() {
 
         {/* Currency & Month Selector */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-          <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-soft border border-blush-100">
-            <span className="text-sm font-medium text-mulberry flex items-center gap-1.5">
+          <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-soft border border-blush-100 max-w-full">
+            <span className="text-sm font-medium text-mulberry flex items-center gap-1.5 shrink-0">
               <Globe size={14} className="text-rose-600" /> Currency:
             </span>
-            <select 
-              value={currency} 
+            <select
+              value={currency}
               onChange={handleCurrencyChange}
-              className="bg-transparent border-none focus:ring-0 text-rose-600 font-bold cursor-pointer py-0"
+              aria-label="Select Currency"
+              className="bg-transparent border-none focus:ring-0 text-rose-600 font-bold cursor-pointer py-0 max-w-[230px] sm:max-w-[300px] truncate"
             >
-              <option value="KES">KES (Ksh)</option>
-              <option value="USD">USD ($)</option>
-              <option value="NGN">NGN (₦)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
+              <optgroup label="Popular Currencies">
+                {worldCurrencies.pinned.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="All World Currencies (A–Z)">
+                {worldCurrencies.rest.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
@@ -158,8 +169,8 @@ export default function BudgetPage() {
         {user && !hasAccess && (
           <BudgetPreview
             month={month}
-            price={paymentPriceLabel}
-            paystackCurrency={paystackCurrency}
+            price={displayPrice}
+            pesapalCurrency={pesapalCurrency}
             currency={currency}
             plan={plan}
             setPlan={setPlan}
@@ -175,8 +186,9 @@ export default function BudgetPage() {
 /* ═══════════════════════════════════════════════════════
    PREVIEW + PAYWALL MODAL
 ═══════════════════════════════════════════════════════ */
-function BudgetPreview({ month, price, paystackCurrency, currency, plan, setPlan, onUnlock, paying }) {
-  const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+function BudgetPreview({ month, price, pesapalCurrency, currency, plan, setPlan, onUnlock, paying }) {
+  const { formatPrice } = useCurrency();
+  const fmt = (n) => formatPrice(n, currency);
 
   return (
     <div className="relative max-w-5xl mx-auto">
@@ -263,9 +275,9 @@ function BudgetPreview({ month, price, paystackCurrency, currency, plan, setPlan
               <>Unlock for {price} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition" /></>
             )}
           </button>
-          
+
           <p className="text-[10px] text-mulberry/40 mt-3 uppercase tracking-widest">
-            * Billed in {paystackCurrency} via Pesapal
+            * Settled in {pesapalCurrency} via Pesapal
           </p>
 
           <div className="mt-4 flex items-center justify-center gap-4 text-[10px] uppercase tracking-widest text-mulberry/50">

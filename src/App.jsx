@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import Navbar from './components/Navbar';
 import AdminNavbar from './components/AdminNavbar';
 import Footer from './components/Footer';
@@ -122,9 +123,11 @@ function SiteGate() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <SiteGate />
-      </BrowserRouter>
+      <CurrencyProvider>
+        <BrowserRouter>
+          <SiteGate />
+        </BrowserRouter>
+      </CurrencyProvider>
     </AuthProvider>
   );
 }

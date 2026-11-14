@@ -1,19 +1,23 @@
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { useCurrency } from '../context/CurrencyContext';
 
-export default function BudgetPreview({ onUnlock }) {
+export default function BudgetPreview({ onUnlock, price, currency: propCurrency }) {
+  const { currency: contextCurrency, formatPrice } = useCurrency();
+  const activeCurrency = propCurrency || contextCurrency || 'KES';
+  const fmt = (n) => formatPrice(n, activeCurrency);
+  const displayUnlockPrice = price || fmt(19);
+
   return (
     <div className="relative">
-      {/* Blurred fake tracker */}
       <div className="select-none pointer-events-none blur-[6px] opacity-60">
         <div className="rounded-3xl bg-white p-8 shadow-card border border-blush-100">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="font-serif text-2xl text-mulberry">30-Day Tracker</h3>
-              <p className="text-sm text-mulberry/60">2026-09 Preview</p>
+              <p className="text-sm text-mulberry/60">Preview ({activeCurrency})</p>
             </div>
           </div>
 
-          {/* Fake table rows */}
           <div className="space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="grid grid-cols-5 gap-3 text-sm">
@@ -29,21 +33,20 @@ export default function BudgetPreview({ onUnlock }) {
           <div className="mt-8 grid grid-cols-3 gap-4">
             <div className="rounded-2xl bg-blush-50 p-4">
               <p className="text-xs uppercase tracking-widest text-mulberry/50">Savings</p>
-              <p className="font-serif text-xl text-mulberry">$2,000</p>
+              <p className="font-serif text-xl text-mulberry">{fmt(2000)}</p>
             </div>
             <div className="rounded-2xl bg-blush-50 p-4">
               <p className="text-xs uppercase tracking-widest text-mulberry/50">Spent</p>
-              <p className="font-serif text-xl text-mulberry">$3,420</p>
+              <p className="font-serif text-xl text-mulberry">{fmt(3420)}</p>
             </div>
             <div className="rounded-2xl bg-blush-50 p-4">
               <p className="text-xs uppercase tracking-widest text-mulberry/50">Remaining</p>
-              <p className="font-serif text-xl text-rose-600">$4,580</p>
+              <p className="font-serif text-xl text-rose-600">{fmt(4580)}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Unlock overlay */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="max-w-md text-center bg-white/95 backdrop-blur rounded-[2rem] p-10 shadow-card border border-blush-100">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 mb-5">
@@ -53,21 +56,21 @@ export default function BudgetPreview({ onUnlock }) {
             Unlock Your Tracker
           </h3>
           <p className="text-mulberry/65 leading-relaxed mb-8">
-            Get lifetime access to the 30-Day Budget Tracker — track essentials,
-            wants, and savings with grace and intention. One payment, yours forever.
+            Get access to the 30-Day Budget Tracker — track essentials,
+            wants, and savings with grace and intention.
           </p>
 
           <button
             onClick={onUnlock}
             className="btn-primary btn-shimmer w-full !py-4 text-base group"
           >
-            Unlock for $19
+            Unlock for {displayUnlockPrice}
             <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition" />
           </button>
 
           <p className="text-xs text-mulberry/50 mt-4 flex items-center justify-center gap-1.5">
             <Sparkles size={11} className="text-rose-400" />
-            Secure payment via Stripe · One-time · Lifetime access
+            Secure payment · Powered by Pesapal
           </p>
         </div>
       </div>
