@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Globe, Calendar } from 'lucide-react';
+import { Lock, ArrowRight, Check, X, CreditCard, Shield, Crown, Calendar } from 'lucide-react';
+import CurrencySelector from '../components/CurrencySelector';
 import BudgetTracker from '../components/BudgetTracker';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -19,7 +20,7 @@ const PLAN_PRICES = {
 export default function BudgetPage() {
   const today = new Date();
   const [month, setMonth] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
-  const { currency, setCurrency, formatPrice, convertFromUSD, worldCurrencies } = useCurrency();
+  const { currency, formatPrice, convertFromUSD } = useCurrency();
   const [plan, setPlan] = useState('monthly');
 
   const { user, loading, loadUser } = useAuth();
@@ -29,10 +30,6 @@ export default function BudgetPage() {
   const [notice, setNotice] = useState(null);
 
   const orderTrackingId = params.get('OrderTrackingId');
-
-  const handleCurrencyChange = (e) => {
-    setCurrency(e.target.value);
-  };
 
   useEffect(() => {
     if (orderTrackingId) {
@@ -97,40 +94,15 @@ export default function BudgetPage() {
         </div>
 
         {/* Currency & Month Selector */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-          <div className="flex items-center gap-3 bg-white px-5 py-2.5 rounded-full shadow-soft border border-blush-100 max-w-full">
-            <span className="text-sm font-medium text-mulberry flex items-center gap-1.5 shrink-0">
-              <Globe size={14} className="text-rose-600" /> Currency:
-            </span>
-            <select
-              value={currency}
-              onChange={handleCurrencyChange}
-              aria-label="Select Currency"
-              className="bg-transparent border-none focus:ring-0 text-rose-600 font-bold cursor-pointer py-0 max-w-[230px] sm:max-w-[300px] truncate"
-            >
-              <optgroup label="Popular Currencies">
-                {worldCurrencies.pinned.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="All World Currencies (A–Z)">
-                {worldCurrencies.rest.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.label}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+          <CurrencySelector />
 
           {user && hasAccess && (
             <input
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="input !py-2.5 max-w-[160px] text-center rounded-full border-blush-100 shadow-soft"
+              className="input !py-2 max-w-[165px] text-center text-sm font-medium text-mulberry rounded-full bg-white border-blush-100 shadow-soft hover:border-rose-300 transition"
             />
           )}
         </div>
